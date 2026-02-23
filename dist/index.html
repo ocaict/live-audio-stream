@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radio Live - Listen Now</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
+      color: #fff;
+      min-height: 100vh;
+    }
+    .container { min-height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.5rem; color: #e94560; }
+    .indicator { font-weight: bold; font-size: 0.9rem; }
+    .indicator.offline { color: #666; }
+    .indicator.live { color: #00d9a5; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .player-card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 3rem;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    .station-art { position: relative; width: 120px; height: 120px; margin: 0 auto 2rem; }
+    .pulse-ring { position: absolute; inset: 0; border-radius: 50%; background: #e94560; opacity: 0; }
+    .pulse-ring.active { animation: pulse-ring 2s ease-out infinite; }
+    @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
+    .station-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 3rem; background: #16213e; border-radius: 50%; }
+    .player-card h2 { font-size: 1.25rem; margin-bottom: 0.5rem; color: #a0a0a0; }
+    .listener-count { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
+    .listen-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 16px 32px;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(233,69,96,0.4);
+    }
+    .listen-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(233,69,96,0.6); }
+    .listen-btn.listening { background: #00d9a5; box-shadow: 0 4px 20px rgba(0,217,165,0.4); }
+    #audio-player { display: none; width: 100%; margin-top: 2rem; border-radius: 8px; }
+    #audio-player.show { display: block; }
+    footer { padding: 1.5rem; text-align: center; color: #444; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Radio Live</h1>
+      <span id="live-indicator" class="indicator offline">● Offline</span>
+    </header>
+    <main>
+      <div class="player-card">
+        <div class="station-art">
+          <div class="pulse-ring"></div>
+          <div class="station-icon">📻</div>
+        </div>
+        <h2 id="status-text">Click to Listen</h2>
+        <p id="listener-count" class="listener-count">Listeners: 0</p>
+        <button id="listen-btn" class="listen-btn">
+          <span class="icon">🔊</span>
+          <span class="text">Listen Live</span>
+        </button>
+        <audio id="audio-player" controls></audio>
+      </div>
+    </main>
+    <footer><p>Powered by WebRTC</p></footer>
+  </div>
+
+  <!-- CONFIG: Set your server URL here for production -->
+  <script>
+    // For production, set your server URL:
+    // const SERVER_URL = 'https://your-radio-server.com';
+    const SERVER_URL = window.location.origin; // Uses same origin by default
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io(SERVER_URL);
+  </script>
+  <script>
+    // Socket declared above
+    let peerConnection = null;
+let isListening = false;
+
+const listenBtn = document.getElementById('listen-btn');
+const statusText = document.getElementById('status-text');
+const listenerCountEl = document.getElementById('listener-count');
+const liveIndicator = document.getElementById('live-indicator');
+const audioPlayer = document.getElementById('audio-player');
+const pulseRing = document.querySelector('.pulse-ring');
+
+const rtcConfig = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+};
+
+async function startListening() {
+  if (isListening) { stopListening(); return; }
+  
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  peerConnection.ontrack = (event) => {
+    if (event.streams[0]) {
+      audioPlayer.srcObject = event.streams[0];
+      audioPlayer.play().then(() => {
+        statusText.textContent = 'Listening live!';
+        pulseRing.classList.add('active');
+      }).catch(e => console.error('Play failed:', e));
+    }
+  };
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) socket.emit('ice-candidate', { target: 'broadcaster', candidate: event.candidate });
+  };
+
+  try {
+    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('offer', { sdp: offer.sdp });
+    socket.emit('join-as-listener');
+    listenBtn.classList.add('listening');
+    listenBtn.querySelector('.text').textContent = 'Stop';
+    statusText.textContent = 'Connecting...';
+    isListening = true;
+  } catch (e) { statusText.textContent = 'Error: ' + e.message; }
+}
+
+function stopListening() {
+  if (peerConnection) { peerConnection.close(); peerConnection = null; }
+  socket.emit('leave-listener');
+  audioPlayer.srcObject = null;
+  audioPlayer.pause();
+  listenBtn.classList.remove('listening');
+  listenBtn.querySelector('.text').textContent = 'Listen Live';
+  statusText.textContent = 'Click to Listen';
+  pulseRing.classList.remove('active');
+  isListening = false;
+}
+
+listenBtn.addEventListener('click', startListening);
+
+socket.on('live-status', (status) => {
+  if (status.isLive) {
+    liveIndicator.textContent = '● Live';
+    liveIndicator.classList.remove('offline');
+    liveIndicator.classList.add('live');
+    if (!isListening) statusText.textContent = 'Broadcast is live - Click to listen';
+  } else {
+    liveIndicator.textContent = '● Offline';
+    liveIndicator.classList.remove('live');
+    liveIndicator.classList.add('offline');
+    if (isListening) { stopListening(); statusText.textContent = 'Broadcast ended'; }
+  }
+});
+
+socket.on('listener-count', (count) => { listenerCountEl.textContent = `Listeners: ${count}`; });
+
+socket.on('offer', async (data) => {
+  if (!peerConnection) return;
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    socket.emit('answer', { socketId: data.socketId, sdp: answer.sdp });
+  } catch (e) { console.error(e); }
+});
+
+socket.on('answer', async (data) => {
+  if (!peerConnection) return;
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+  } catch (e) { console.error(e); }
+});
+
+socket.on('ice-candidate', async (data) => {
+  if (!peerConnection) return;
+  try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) {}
+});
+
+socket.on('broadcast-ended', () => { stopListening(); statusText.textContent = 'Broadcast ended'; });
+socket.on('no-broadcast', () => { statusText.textContent = 'No broadcast'; stopListening(); });
+
+socket.emit('get-live-status');
+  </script>
+</body>
+</html>

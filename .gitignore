@@ -8,7 +8,7 @@ node_modules/
 recordings/
 
 # Build output
-dist/
+
 
 # Database
 radio.db
