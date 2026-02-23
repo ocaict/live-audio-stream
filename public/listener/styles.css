@@ -1,0 +1,177 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  color: #e94560;
+}
+
+.indicator {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.indicator.offline {
+  color: #666;
+}
+
+.indicator.live {
+  color: #00d9a5;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.player-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 3rem;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.station-art {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 2rem;
+}
+
+.pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #e94560;
+  opacity: 0;
+}
+
+.pulse-ring.active {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.station-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: #16213e;
+  border-radius: 50%;
+}
+
+.player-card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #a0a0a0;
+}
+
+.listener-count {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.listen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 16px 32px;
+  background: #e94560;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+}
+
+.listen-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 30px rgba(233, 69, 96, 0.6);
+}
+
+.listen-btn:active {
+  transform: translateY(0);
+}
+
+.listen-btn .icon {
+  font-size: 1.3rem;
+}
+
+.listen-btn.listening {
+  background: #00d9a5;
+  box-shadow: 0 4px 20px rgba(0, 217, 165, 0.4);
+}
+
+#audio-player {
+  display: none;
+  width: 100%;
+  margin-top: 2rem;
+  border-radius: 8px;
+}
+
+#audio-player.show {
+  display: block;
+}
+
+#audio-player::-webkit-media-controls-panel {
+  background: #16213e;
+}
+
+footer {
+  padding: 1.5rem;
+  text-align: center;
+  color: #444;
+  font-size: 0.85rem;
+}
