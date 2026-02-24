@@ -1,33 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Radio Live - Listen Now</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>OcaTech-Live</title>
+  <link rel="stylesheet" href="/listener/styles.css">
   <!-- Configure your server URL here -->
   <script>
     window.SERVER_URL = ''; // Leave empty for same origin, or set to 'https://your-server.com'
   </script>
 </head>
+
 <body>
   <div class="container">
     <header>
-      <h1>Radio Live</h1>
+      <h1>OcaTech-Live</h1>
       <span id="live-indicator" class="indicator offline">● Offline</span>
     </header>
 
     <main>
       <div class="player-card">
+        <div class="channel-selector">
+          <select id="channel-select">
+            <option value="">Loading channels...</option>
+          </select>
+        </div>
+
         <div class="station-art">
           <div class="pulse-ring"></div>
           <div class="station-icon">📻</div>
         </div>
-        
-        <h2 id="status-text">Click to Listen</h2>
+
+        <h2 id="status-text">Select a channel to listen</h2>
         <p id="listener-count" class="listener-count">Listeners: 0</p>
-        
-        <button id="listen-btn" class="listen-btn">
+
+        <button id="listen-btn" class="listen-btn" disabled>
           <span class="icon">🔊</span>
           <span class="text">Listen Live</span>
         </button>
@@ -47,6 +55,7 @@
     const socketUrl = window.SERVER_URL || '';
     const socket = io(socketUrl);
   </script>
-  <script src="app.js"></script>
+  <script src="/listener/app.js"></script>
 </body>
+
 </html>

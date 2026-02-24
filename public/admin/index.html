@@ -35,13 +35,33 @@
     </header>
 
     <main>
+      <section class="channel-section">
+        <h2>My Channels</h2>
+        <div class="channel-selector">
+          <select id="channel-select">
+            <option value="">Select a channel...</option>
+          </select>
+          <button id="create-channel-btn" class="btn secondary">+ New Channel</button>
+        </div>
+        <div id="channel-form" class="channel-form hidden">
+          <input type="text" id="channel-name" placeholder="Channel Name" required>
+          <input type="text" id="channel-description" placeholder="Description (optional)">
+          <input type="color" id="channel-color" value="#e94560">
+          <div class="form-actions">
+            <button id="save-channel-btn" class="btn primary">Save</button>
+            <button id="cancel-channel-btn" class="btn secondary">Cancel</button>
+          </div>
+        </div>
+        <p id="channel-status" class="status"></p>
+      </section>
+
       <section class="broadcast-section">
         <h2>Broadcast Control</h2>
         <div class="controls">
           <button id="start-broadcast-btn" class="btn primary">Start Broadcast</button>
           <button id="stop-broadcast-btn" class="btn danger" disabled>Stop Broadcast</button>
         </div>
-        <p id="broadcast-status" class="status">Click Start Broadcast to go live</p>
+        <p id="broadcast-status" class="status">Select a channel to start broadcasting</p>
       </section>
 
       <section class="recording-section">

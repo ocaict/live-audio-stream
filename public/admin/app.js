@@ -1,15 +1,26 @@
-// socket is declared in index.html
-const API_URL = window.API_URL || ''; // Configurable API URL for separate hosting
+const API_URL = window.API_URL || '';
 let isLive = false;
 let isRecording = false;
 let mediaStream = null;
 let peerConnections = {};
 let pendingIceCandidates = {};
+let myChannels = [];
+let selectedChannelId = null;
 
 const loginScreen = document.getElementById('login-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
+
+const channelSelect = document.getElementById('channel-select');
+const createChannelBtn = document.getElementById('create-channel-btn');
+const channelForm = document.getElementById('channel-form');
+const channelNameInput = document.getElementById('channel-name');
+const channelDescInput = document.getElementById('channel-description');
+const channelColorInput = document.getElementById('channel-color');
+const saveChannelBtn = document.getElementById('save-channel-btn');
+const cancelChannelBtn = document.getElementById('cancel-channel-btn');
+const channelStatus = document.getElementById('channel-status');
 
 const startBroadcastBtn = document.getElementById('start-broadcast-btn');
 const stopBroadcastBtn = document.getElementById('stop-broadcast-btn');
@@ -44,7 +55,10 @@ async function checkAuth() {
   try {
     const res = await apiFetch('/api/auth/check');
     const data = await res.json();
-    if (data.authenticated) showDashboard();
+    if (data.authenticated) {
+      showDashboard();
+      loadMyChannels();
+    }
   } catch (e) { console.error('Auth failed:', e); }
 }
 
@@ -58,6 +72,7 @@ async function login(username, password) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showDashboard();
+    loadMyChannels();
   } catch (e) { loginError.textContent = e.message; }
 }
 
@@ -76,6 +91,104 @@ loginForm.addEventListener('submit', (e) => {
   login(document.getElementById('username').value, document.getElementById('password').value);
 });
 logoutBtn.addEventListener('click', logout);
+
+async function loadMyChannels() {
+  try {
+    const res = await apiFetch('/api/channels/my/channels');
+    myChannels = await res.json();
+    renderChannelSelector();
+  } catch (e) {
+    console.error('Failed to load channels:', e);
+    channelStatus.textContent = 'Failed to load channels';
+  }
+}
+
+function renderChannelSelector() {
+  if (myChannels.length === 0) {
+    channelSelect.innerHTML = '<option value="">No channels yet - create one!</option>';
+    startBroadcastBtn.disabled = true;
+    return;
+  }
+
+  channelSelect.innerHTML = '<option value="">Select a channel...</option>' + 
+    myChannels.map(ch => `<option value="${ch.id}">${ch.name} ${ch.isLive ? '(LIVE)' : ''}</option>`).join('');
+  
+  startBroadcastBtn.disabled = !selectedChannelId;
+}
+
+channelSelect.addEventListener('change', () => {
+  selectedChannelId = channelSelect.value;
+  const channel = myChannels.find(c => c.id === selectedChannelId);
+  
+  if (channel?.isLive) {
+    broadcastStatus.textContent = 'This channel is live';
+    liveIndicator.textContent = '● Live';
+    liveIndicator.className = 'indicator live';
+    startBroadcastBtn.disabled = true;
+    stopBroadcastBtn.disabled = false;
+    isLive = true;
+  } else {
+    broadcastStatus.textContent = 'Select a channel to start broadcasting';
+    liveIndicator.textContent = '● Offline';
+    liveIndicator.className = 'indicator offline';
+    startBroadcastBtn.disabled = !selectedChannelId;
+    stopBroadcastBtn.disabled = true;
+    isLive = false;
+  }
+  
+  startRecordingBtn.disabled = !isLive;
+});
+
+createChannelBtn.addEventListener('click', () => {
+  channelForm.classList.remove('hidden');
+  createChannelBtn.classList.add('hidden');
+});
+
+cancelChannelBtn.addEventListener('click', () => {
+  channelForm.classList.add('hidden');
+  createChannelBtn.classList.remove('hidden');
+  channelNameInput.value = '';
+  channelDescInput.value = '';
+  channelStatus.textContent = '';
+});
+
+saveChannelBtn.addEventListener('click', async () => {
+  const name = channelNameInput.value.trim();
+  const description = channelDescInput.value.trim();
+  const color = channelColorInput.value;
+
+  if (!name) {
+    channelStatus.textContent = 'Channel name is required';
+    return;
+  }
+
+  try {
+    const res = await apiFetch('/api/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, color })
+    });
+    const data = await res.json();
+    
+    if (!res.ok) throw new Error(data.error);
+    
+    channelStatus.textContent = 'Channel created!';
+    channelStatus.style.color = '#00d9a5';
+    
+    setTimeout(() => {
+      channelForm.classList.add('hidden');
+      createChannelBtn.classList.remove('hidden');
+      channelNameInput.value = '';
+      channelDescInput.value = '';
+      channelStatus.textContent = '';
+    }, 1000);
+    
+    loadMyChannels();
+  } catch (e) {
+    channelStatus.textContent = e.message;
+    channelStatus.style.color = '#e94560';
+  }
+});
 
 function encodeWAV(buffers, sampleRate) {
   const numChannels = 1;
@@ -116,6 +229,11 @@ function encodeWAV(buffers, sampleRate) {
 }
 
 startBroadcastBtn.addEventListener('click', async () => {
+  if (!selectedChannelId) {
+    broadcastStatus.textContent = 'Please select a channel first';
+    return;
+  }
+
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     console.log('Got stream');
@@ -138,10 +256,24 @@ startBroadcastBtn.addEventListener('click', async () => {
     source.connect(processor);
     processor.connect(audioContext.destination);
     
-    socket.emit('broadcaster-ready');
+    if (!socket.connected) {
+      broadcastStatus.textContent = 'Socket not connected. Please refresh.';
+      return;
+    }
+    
+    socket.emit('join-channel', { channelId: selectedChannelId, role: 'broadcaster' });
+    
+    setTimeout(() => {
+      socket.emit('broadcaster-ready', { channelId: selectedChannelId });
+    }, 100);
+    
     startBroadcastBtn.disabled = true;
     stopBroadcastBtn.disabled = false;
+    startRecordingBtn.disabled = !selectedChannelId;
     broadcastStatus.textContent = 'Broadcasting...';
+    liveIndicator.textContent = '● Live';
+    liveIndicator.className = 'indicator live';
+    isLive = true;
   } catch (e) {
     console.error('Error:', e);
     broadcastStatus.textContent = 'Error: ' + e.message;
@@ -149,8 +281,12 @@ startBroadcastBtn.addEventListener('click', async () => {
 });
 
 stopBroadcastBtn.addEventListener('click', () => {
-  if (isRecording) { alert('Stop recording first'); return; }
-  socket.emit('stop-broadcasting');
+  if (isRecording) { 
+    alert('Stop recording first'); 
+    return; 
+  }
+  
+  socket.emit('stop-broadcasting', { channelId: selectedChannelId });
   
   Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch(e) {} });
   peerConnections = {};
@@ -162,6 +298,9 @@ stopBroadcastBtn.addEventListener('click', () => {
   stopBroadcastBtn.disabled = true;
   startRecordingBtn.disabled = true;
   broadcastStatus.textContent = 'Broadcast stopped';
+  liveIndicator.textContent = '● Offline';
+  liveIndicator.className = 'indicator offline';
+  isLive = false;
 });
 
 startRecordingBtn.addEventListener('click', () => {
@@ -171,6 +310,7 @@ startRecordingBtn.addEventListener('click', () => {
   startRecordingBtn.disabled = true;
   stopRecordingBtn.disabled = false;
   recordingStatus.textContent = 'Recording...';
+  socket.emit('start-recording', { channelId: selectedChannelId });
 });
 
 stopRecordingBtn.addEventListener('click', async () => {
@@ -212,7 +352,6 @@ stopRecordingBtn.addEventListener('click', async () => {
   }
   
   recordedBuffers = [];
-  startRecordingBtn.textContent = 'Start Recording';
 });
 
 async function loadRecordings() {
@@ -223,7 +362,7 @@ async function loadRecordings() {
 }
 
 function renderRecordings(recordings) {
-  if (recordings.length === 0) {
+  if (!recordings || recordings.length === 0) {
     recordingsList.innerHTML = '<p class="empty">No recordings</p>';
     return;
   }
@@ -265,7 +404,6 @@ async function playRecording(id) {
     const res = await apiFetch(`/api/recordings/${id}/stream`);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    console.log('Blob:', blob.size, blob.type);
     player.innerHTML = `<audio controls autoplay src="${url}"></audio>`;
   } catch (e) { console.error(e); }
 }
@@ -279,6 +417,7 @@ function formatSize(bytes) {
 }
 
 async function handleOffer(sdp, socketId) {
+  console.log('Received offer from listener:', socketId);
   const pc = new RTCPeerConnection(rtcConfig);
   peerConnections[socketId] = pc;
   pendingIceCandidates[socketId] = [];
@@ -288,18 +427,22 @@ async function handleOffer(sdp, socketId) {
   }
 
   pc.onicecandidate = e => {
-    if (e.candidate) socket.emit('ice-candidate', { target: socketId, candidate: e.candidate });
+    if (e.candidate) socket.emit('ice-candidate', { target: socketId, candidate: e.candidate, channelId: selectedChannelId });
   };
 
   try {
     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+    console.log('Remote description set, creating answer...');
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    socket.emit('answer', { socketId, sdp: answer.sdp });
-  } catch (e) { console.error(e); }
+    console.log('Sending answer to listener:', socketId);
+    socket.emit('answer', { socketId, sdp: answer.sdp, channelId: selectedChannelId });
+    console.log('Answer sent!');
+  } catch (e) { console.error('Error handling offer:', e); }
 }
 
 socket.on('offer', d => handleOffer(d.sdp, d.socketId));
+
 socket.on('ice-candidate', async d => {
   const pc = peerConnections[d.socketId];
   if (pc?.remoteDescription?.type) {
@@ -308,16 +451,57 @@ socket.on('ice-candidate', async d => {
     (pendingIceCandidates[d.socketId] = pendingIceCandidates[d.socketId] || []).push(d.candidate);
   }
 });
+
 socket.on('listener-joined', d => console.log('Listener:', d.socketId));
 
-socket.on('live-status', s => {
-  isLive = s.isLive;
-  liveIndicator.textContent = s.isLive ? '● Live' : '● Offline';
-  liveIndicator.className = 'indicator ' + (s.isLive ? 'live' : 'offline');
-  broadcastStatus.textContent = s.isLive ? 'Broadcasting' : 'Stopped';
-  startRecordingBtn.disabled = !s.isLive;
+socket.on('channel-live', (data) => {
+  console.log('Channel live status:', data);
+  if (data.channelId === selectedChannelId) {
+    isLive = data.isLive;
+    liveIndicator.textContent = data.isLive ? '● Live' : '● Offline';
+    liveIndicator.className = 'indicator ' + (data.isLive ? 'live' : 'offline');
+    broadcastStatus.textContent = data.isLive ? 'Broadcasting' : 'Stopped';
+    startRecordingBtn.disabled = !data.isLive;
+    
+    if (data.isLive) {
+      startBroadcastBtn.disabled = true;
+      stopBroadcastBtn.disabled = false;
+    } else {
+      startBroadcastBtn.disabled = false;
+      stopBroadcastBtn.disabled = true;
+    }
+  }
+  
+  loadMyChannels();
 });
-socket.on('listener-count', c => listenerCountEl.textContent = `Listeners: ${c}`);
+
+socket.on('listener-count', (data) => {
+  console.log('Listener count:', data);
+  if (data.channelId === selectedChannelId) {
+    listenerCountEl.textContent = `Listeners: ${data.count}`;
+  }
+});
+
+socket.on('recording-started', (data) => {
+  console.log('Recording started:', data);
+  recordingIdEl.textContent = `Recording ID: ${data.id}`;
+});
+
+socket.on('recording-stopped', (data) => {
+  console.log('Recording stopped:', data);
+  recordingStatus.textContent = 'Recording saved!';
+  loadRecordings();
+});
+
+socket.on('error', (error) => {
+  console.error('Socket error:', error);
+});
+
+socket.io.on('reconnect', (attempt) => {
+  console.log('Reconnected after', attempt, 'attempts');
+  loadMyChannels();
+});
+
 socket.on('error', m => alert(m));
 
 checkAuth();

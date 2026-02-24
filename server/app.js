@@ -12,6 +12,7 @@ const setupSocketHandlers = require('./sockets');
 const authRoutes = require('./routes/auth');
 const recordingsRoutes = require('./routes/recordings');
 const statusRoutes = require('./routes/status');
+const channelRoutes = require('./routes/channels');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,8 +25,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Socket.IO CORS
@@ -45,7 +46,7 @@ if (!CONFIG.API_ONLY) {
   app.use(express.static(path.join(__dirname, '../dist')));
   
   app.get('/listen', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/listener/index.html'));
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
   
   app.get('/admin', (req, res) => {
@@ -61,6 +62,7 @@ if (!CONFIG.API_ONLY) {
 app.use('/api/auth', authRoutes);
 app.use('/api/recordings', recordingsRoutes);
 app.use('/api/status', statusRoutes);
+app.use('/api/channels', channelRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

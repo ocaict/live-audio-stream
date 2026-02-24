@@ -2,11 +2,34 @@ const express = require('express');
 const router = express.Router();
 const recordingController = require('../controllers/recordingController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { recordingIdValidation } = require('../middleware/validation');
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+const uploadValidation = (req, res, next) => {
+  const contentType = req.headers['content-type'];
+  const allowedTypes = ['audio/wav', 'audio/webm', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/flac'];
+  
+  if (!contentType) {
+    return res.status(400).json({ error: 'Content-Type header required' });
+  }
+  
+  if (!allowedTypes.includes(contentType.toLowerCase())) {
+    return res.status(400).json({ error: 'Invalid content type. Allowed: audio/wav, audio/webm, audio/mpeg, audio/mp3, audio/ogg, audio/flac' });
+  }
+  
+  const contentLength = parseInt(req.headers['content-length'], 10);
+  if (contentLength > MAX_FILE_SIZE) {
+    return res.status(400).json({ error: `File too large. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB` });
+  }
+  
+  next();
+};
 
 router.get('/', authenticateToken, requireAdmin, recordingController.list);
-router.post('/upload', authenticateToken, requireAdmin, recordingController.upload);
-router.get('/:id/stream', recordingController.stream);
-router.get('/:id/download', authenticateToken, requireAdmin, recordingController.download);
-router.delete('/:id', authenticateToken, requireAdmin, recordingController.delete);
+router.post('/upload', authenticateToken, requireAdmin, uploadValidation, recordingController.upload);
+router.get('/:id/stream', recordingIdValidation, recordingController.stream);
+router.get('/:id/download', authenticateToken, requireAdmin, recordingIdValidation, recordingController.download);
+router.delete('/:id', authenticateToken, requireAdmin, recordingIdValidation, recordingController.delete);
 
 module.exports = router;

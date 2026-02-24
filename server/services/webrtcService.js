@@ -3,91 +3,143 @@ const EventEmitter = require('events');
 class WebRTCService extends EventEmitter {
   constructor() {
     super();
-    this.isLive = false;
-    this.broadcasterSocket = null;
-    this.listenerCount = 0;
-    this.listenerSockets = new Map();
+    this.channels = new Map();
   }
 
-  startBroadcast(socket) {
-    this.isLive = true;
-    this.broadcasterSocket = socket;
-    this.emit('live-status-changed', true);
+  getOrCreateChannel(channelId) {
+    if (!this.channels.has(channelId)) {
+      this.channels.set(channelId, {
+        isLive: false,
+        broadcasterSocket: null,
+        listenerCount: 0,
+        listenerSockets: new Map()
+      });
+    }
+    return this.channels.get(channelId);
   }
 
-  stopBroadcast() {
-    this.isLive = false;
-    this.broadcasterSocket = null;
-    
-    for (const [socketId, listenerSocket] of this.listenerSockets) {
+  startBroadcast(socket, channelId) {
+    const channel = this.getOrCreateChannel(channelId);
+    channel.isLive = true;
+    channel.broadcasterSocket = socket;
+    this.emit('channel-live', { channelId, isLive: true });
+  }
+
+  stopBroadcast(channelId) {
+    const channel = this.channels.get(channelId);
+    if (!channel) return;
+
+    channel.isLive = false;
+    channel.broadcasterSocket = null;
+
+    for (const [socketId, listenerSocket] of channel.listenerSockets) {
       try {
         listenerSocket.emit('broadcast-ended');
       } catch (e) {
         console.error(`Error notifying listener ${socketId}:`, e.message);
       }
     }
-    this.listenerSockets.clear();
-    this.listenerCount = 0;
-    
-    this.emit('live-status-changed', false);
+    channel.listenerSockets.clear();
+    channel.listenerCount = 0;
+
+    this.emit('channel-live', { channelId, isLive: false });
   }
 
-  addListener(socket) {
-    if (!this.isLive) return false;
-    this.listenerSockets.set(socket.id, socket);
-    this.listenerCount = this.listenerSockets.size;
-    this.emit('listener-count-changed', this.listenerCount);
+  addListener(socket, channelId) {
+    const channel = this.getOrCreateChannel(channelId);
+    if (!channel.isLive) return false;
+    
+    channel.listenerSockets.set(socket.id, socket);
+    channel.listenerCount = channel.listenerSockets.size;
+    this.emit('listener-count-changed', { channelId, count: channel.listenerCount });
     return true;
   }
 
-  removeListener(socketId) {
-    if (this.listenerSockets.has(socketId)) {
-      this.listenerSockets.delete(socketId);
-      this.listenerCount = this.listenerSockets.size;
-      this.emit('listener-count-changed', this.listenerCount);
+  removeListener(socketId, channelId) {
+    const channel = this.channels.get(channelId);
+    if (channel && channel.listenerSockets.has(socketId)) {
+      channel.listenerSockets.delete(socketId);
+      channel.listenerCount = channel.listenerSockets.size;
+      this.emit('listener-count-changed', { channelId, count: channel.listenerCount });
     }
   }
 
-  getStatus() {
+  isChannelLive(channelId) {
+    const channel = this.channels.get(channelId);
+    return channel ? channel.isLive : false;
+  }
+
+  getChannelListenerCount(channelId) {
+    const channel = this.channels.get(channelId);
+    return channel ? channel.listenerCount : 0;
+  }
+
+  getStatus(channelId) {
+    const channel = this.channels.get(channelId);
+    if (!channel) return { isLive: false, listenerCount: 0 };
     return {
-      isLive: this.isLive,
-      listenerCount: this.listenerCount
+      isLive: channel.isLive,
+      listenerCount: channel.listenerCount
     };
   }
 
-  getBroadcasterSocket() {
-    return this.broadcasterSocket;
+  getAllStatuses() {
+    const statuses = {};
+    for (const [channelId, channel] of this.channels) {
+      statuses[channelId] = {
+        isLive: channel.isLive,
+        listenerCount: channel.listenerCount
+      };
+    }
+    return statuses;
   }
 
-  sendToBroadcaster(event, data) {
-    if (this.broadcasterSocket) {
+  getBroadcasterSocket(channelId) {
+    const channel = this.channels.get(channelId);
+    return channel ? channel.broadcasterSocket : null;
+  }
+
+  sendToBroadcaster(channelId, event, data) {
+    const channel = this.channels.get(channelId);
+    if (channel && channel.broadcasterSocket) {
       try {
-        this.broadcasterSocket.emit(event, data);
+        channel.broadcasterSocket.emit(event, data);
       } catch (e) {
         console.error('Error sending to broadcaster:', e.message);
       }
     }
   }
 
-  sendToListener(socketId, event, data) {
-    const socket = this.listenerSockets.get(socketId);
-    if (socket) {
-      try {
-        socket.emit(event, data);
-      } catch (e) {
-        console.error(`Error sending to listener ${socketId}:`, e.message);
+  sendToListener(channelId, socketId, event, data) {
+    const channel = this.channels.get(channelId);
+    if (channel) {
+      const socket = channel.listenerSockets.get(socketId);
+      if (socket) {
+        try {
+          socket.emit(event, data);
+        } catch (e) {
+          console.error(`Error sending to listener ${socketId}:`, e.message);
+        }
       }
     }
   }
 
-  broadcastToListeners(event, data) {
-    for (const [socketId, socket] of this.listenerSockets) {
-      try {
-        socket.emit(event, data);
-      } catch (e) {
-        console.error(`Error sending to listener ${socketId}:`, e.message);
+  broadcastToListeners(channelId, event, data) {
+    const channel = this.channels.get(channelId);
+    if (channel) {
+      for (const [socketId, socket] of channel.listenerSockets) {
+        try {
+          socket.emit(event, data);
+        } catch (e) {
+          console.error(`Error sending to listener ${socketId}:`, e.message);
+        }
       }
     }
+  }
+
+  getListenerSocket(channelId, socketId) {
+    const channel = this.channels.get(channelId);
+    return channel ? channel.listenerSockets.get(socketId) : null;
   }
 }
 

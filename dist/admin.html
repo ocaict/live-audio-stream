@@ -4,55 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Radio Admin - Live Broadcast</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #fff; min-height: 100vh; }
-    .screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .screen.hidden { display: none; }
-    .login-box { background: #16213e; padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; }
-    .login-box h1 { text-align: center; margin-bottom: 1.5rem; color: #e94560; }
-    #login-form { display: flex; flex-direction: column; gap: 1rem; }
-    #login-form input { padding: 12px; border: 1px solid #333; border-radius: 4px; background: #0f0f1a; color: #fff; font-size: 1rem; }
-    #login-form button { padding: 12px; background: #e94560; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-    #login-form button:hover { background: #d63d56; }
-    .error { color: #ff6b6b; text-align: center; margin-top: 1rem; }
-    header { background: #16213e; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-    header h1 { color: #e94560; }
-    .header-right { display: flex; align-items: center; gap: 1.5rem; }
-    .indicator { font-weight: bold; }
-    .indicator.offline { color: #666; }
-    .indicator.live { color: #00d9a5; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    #logout-btn { padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    main { padding: 6rem 2rem 2rem; max-width: 1000px; margin: 0 auto; }
-    section { background: #16213e; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
-    section h2 { margin-bottom: 1rem; color: #a0a0a0; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
-    .controls { display: flex; gap: 1rem; margin-bottom: 1rem; }
-    .btn { padding: 12px 24px; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
-    .btn.primary { background: #00d9a5; color: #1a1a2e; }
-    .btn.primary:hover:not(:disabled) { background: #00c896; }
-    .btn.secondary { background: #4a90d9; color: white; }
-    .btn.secondary:hover:not(:disabled) { background: #3a7fc8; }
-    .btn.danger { background: #e94560; color: white; }
-    .btn.danger:hover:not(:disabled) { background: #d63d56; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status { color: #a0a0a0; font-size: 0.9rem; }
-    .recording-id { color: #00d9a5; font-family: monospace; font-size: 0.85rem; margin-top: 0.5rem; }
-    .recordings-list { display: flex; flex-direction: column; gap: 0.5rem; }
-    .recordings-list .empty { color: #666; text-align: center; padding: 2rem; }
-    .recording-item { background: #0f0f1a; padding: 1rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-    .recording-info { flex: 1; }
-    .recording-info .filename { font-family: monospace; margin-bottom: 0.25rem; }
-    .recording-info .meta { font-size: 0.85rem; color: #666; }
-    .recording-actions { display: flex; gap: 0.5rem; }
-    .recording-actions button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-    .recording-actions .play { background: #00d9a5; color: #1a1a2e; }
-    .recording-actions .download { background: #4a90d9; color: white; }
-    .recording-actions .delete { background: #e94560; color: white; }
-    #audio-player { display: none; margin-top: 1rem; }
-    #audio-player.show { display: block; }
-    #audio-player audio { width: 100%; }
-  </style>
+  <link rel="stylesheet" href="/admin/styles.css">
+  <!-- Configure your server URL here -->
+  <script>
+    window.SERVER_URL = ''; // Leave empty for same origin, or set to 'https://your-server.com'
+    window.API_URL = '';    // Leave empty for same origin, or set to 'https://your-server.com'
+  </script>
 </head>
 <body>
   <div id="login-screen" class="screen">
@@ -78,13 +35,33 @@
     </header>
 
     <main>
+      <section class="channel-section">
+        <h2>My Channels</h2>
+        <div class="channel-selector">
+          <select id="channel-select">
+            <option value="">Select a channel...</option>
+          </select>
+          <button id="create-channel-btn" class="btn secondary">+ New Channel</button>
+        </div>
+        <div id="channel-form" class="channel-form hidden">
+          <input type="text" id="channel-name" placeholder="Channel Name" required>
+          <input type="text" id="channel-description" placeholder="Description (optional)">
+          <input type="color" id="channel-color" value="#e94560">
+          <div class="form-actions">
+            <button id="save-channel-btn" class="btn primary">Save</button>
+            <button id="cancel-channel-btn" class="btn secondary">Cancel</button>
+          </div>
+        </div>
+        <p id="channel-status" class="status"></p>
+      </section>
+
       <section class="broadcast-section">
         <h2>Broadcast Control</h2>
         <div class="controls">
           <button id="start-broadcast-btn" class="btn primary">Start Broadcast</button>
           <button id="stop-broadcast-btn" class="btn danger" disabled>Stop Broadcast</button>
         </div>
-        <p id="broadcast-status" class="status">Click Start Broadcast to go live</p>
+        <p id="broadcast-status" class="status">Select a channel to start broadcasting</p>
       </section>
 
       <section class="recording-section">
@@ -106,268 +83,12 @@
     </main>
   </div>
 
-  <!-- CONFIG: Set your server URL here for production -->
-  <script>
-    // For production, set your server URL:
-    // const SERVER_URL = 'https://your-radio-server.com';
-    // const API_URL = 'https://your-radio-server.com';
-    const SERVER_URL = window.location.origin;
-    const API_URL = window.location.origin;
-  </script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io(SERVER_URL);
-    const API_BASE = API_URL;
-    
-    function apiFetch(url, options = {}) {
-      return fetch(API_BASE + url, { ...options, credentials: 'include' });
-    }
+    const socketUrl = window.SERVER_URL || '';
+    window.API_URL = window.API_URL || window.SERVER_URL || '';
+    const socket = io(socketUrl);
   </script>
-  <script>
-    let isLive = false;
-let isRecording = false;
-let mediaStream = null;
-let peerConnections = {};
-let pendingIceCandidates = {};
-
-const loginScreen = document.getElementById('login-screen');
-const dashboardScreen = document.getElementById('dashboard-screen');
-const loginForm = document.getElementById('login-form');
-const loginError = document.getElementById('login-error');
-
-const startBroadcastBtn = document.getElementById('start-broadcast-btn');
-const stopBroadcastBtn = document.getElementById('stop-broadcast-btn');
-const broadcastStatus = document.getElementById('broadcast-status');
-const liveIndicator = document.getElementById('live-indicator');
-
-const startRecordingBtn = document.getElementById('start-recording-btn');
-const stopRecordingBtn = document.getElementById('stop-recording-btn');
-const recordingStatus = document.getElementById('recording-status');
-const recordingIdEl = document.getElementById('recording-id');
-
-const logoutBtn = document.getElementById('logout-btn');
-const listenerCountEl = document.getElementById('listener-count');
-const recordingsList = document.getElementById('recordings-list');
-
-const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-let audioContext = null;
-let mediaStreamDestination = null;
-let recordedBuffers = [];
-
-function apiFetch(url, options = {}) {
-    return fetch(API_BASE + url, { ...options, credentials: 'include' });
-}
-
-async function checkAuth() {
-  try {
-    const res = await apiFetch('/api/auth/check');
-    const data = await res.json();
-    if (data.authenticated) showDashboard();
-  } catch (e) { console.error('Auth failed:', e); }
-}
-
-async function login(username, password) {
-  try {
-    const res = await apiFetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showDashboard();
-  } catch (e) { loginError.textContent = e.message; }
-}
-
-function showDashboard() {
-  loginScreen.classList.add('hidden');
-  dashboardScreen.classList.remove('hidden');
-  loadRecordings();
-}
-
-function logout() {
-  apiFetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.reload());
-}
-
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  login(document.getElementById('username').value, document.getElementById('password').value);
-});
-logoutBtn.addEventListener('click', logout);
-
-function encodeWAV(buffers, sampleRate) {
-  const numChannels = 1;
-  const format = 1;
-  const bitDepth = 16;
-  const length = buffers[0].length;
-  const dataSize = length * numChannels * (bitDepth / 8);
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-  const writeString = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
-  view.setUint16(32, numChannels * (bitDepth / 8), true);
-  view.setUint16(34, bitDepth, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-  let offset = 44;
-  for (let i = 0; i < length; i++) {
-    const sample = Math.max(-1, Math.min(1, buffers[0][i]));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-    offset += 2;
-  }
-  return new Blob([buffer], { type: 'audio/wav' });
-}
-
-startBroadcastBtn.addEventListener('click', async () => {
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    audioContext = new AudioContext({ sampleRate: 44100 });
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    mediaStreamDestination = audioContext.createMediaStreamDestination();
-    source.connect(mediaStreamDestination);
-    
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (e) => {
-      if (isRecording) {
-        const data = e.inputBuffer.getChannelData(0);
-        recordedBuffers.push(new Float32Array(data));
-      }
-    };
-    source.connect(processor);
-    processor.connect(audioContext.destination);
-    
-    socket.emit('broadcaster-ready');
-    startBroadcastBtn.disabled = true;
-    stopBroadcastBtn.disabled = false;
-    broadcastStatus.textContent = 'Broadcasting...';
-  } catch (e) { broadcastStatus.textContent = 'Error: ' + e.message; }
-});
-
-stopBroadcastBtn.addEventListener('click', () => {
-  if (isRecording) { alert('Stop recording first'); return; }
-  socket.emit('stop-broadcasting');
-  Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch(e) {} });
-  peerConnections = {};
-  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-  if (audioContext) { audioContext.close(); audioContext = null; }
-  startBroadcastBtn.disabled = false;
-  stopBroadcastBtn.disabled = true;
-  startRecordingBtn.disabled = true;
-  broadcastStatus.textContent = 'Broadcast stopped';
-});
-
-startRecordingBtn.addEventListener('click', () => {
-  if (!audioContext) { alert('Start broadcast first'); return; }
-  recordedBuffers = [];
-  isRecording = true;
-  startRecordingBtn.disabled = true;
-  stopRecordingBtn.disabled = false;
-  recordingStatus.textContent = 'Recording...';
-});
-
-stopRecordingBtn.addEventListener('click', async () => {
-  if (!isRecording) return;
-  isRecording = false;
-  stopRecordingBtn.disabled = true;
-  recordingStatus.textContent = 'Processing...';
-  
-  if (recordedBuffers.length === 0) { recordingStatus.textContent = 'No audio data'; return; }
-  
-  const allData = new Float32Array(recordedBuffers.reduce((sum, b) => sum + b.length, 0));
-  let offset = 0;
-  recordedBuffers.forEach(buf => { allData.set(buf, offset); offset += buf.length; });
-  
-  const wavBlob = encodeWAV([allData], audioContext.sampleRate);
-  const uint8Array = new Uint8Array(await wavBlob.arrayBuffer());
-  
-  try {
-    await apiFetch('/api/recordings/upload', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: uint8Array });
-    recordingStatus.textContent = 'Saved!';
-    loadRecordings();
-  } catch (e) { recordingStatus.textContent = 'Error: ' + e.message; }
-  
-  recordedBuffers = [];
-  startRecordingBtn.textContent = 'Start Recording';
-});
-
-async function loadRecordings() {
-  try { renderRecordings(await (await apiFetch('/api/recordings')).json()); } catch (e) { console.error(e); }
-}
-
-function renderRecordings(recordings) {
-  if (recordings.length === 0) { recordingsList.innerHTML = '<p class="empty">No recordings</p>'; return; }
-  recordingsList.innerHTML = recordings.map(r => `
-    <div class="recording-item">
-      <div class="recording-info">
-        <div class="filename">${r.filename}</div>
-        <div class="meta">${new Date(r.created_at).toLocaleString()} • ${formatSize(r.filesize)}</div>
-      </div>
-      <div class="recording-actions">
-        <button class="play" data-id="${r.id}">Play</button>
-        <button class="download" data-id="${r.id}">Download</button>
-        <button class="delete" data-id="${r.id}">Delete</button>
-      </div>
-    </div>
-  `).join('');
-  
-  recordingsList.querySelectorAll('.play').forEach(b => b.onclick = () => playRecording(b.dataset.id));
-  recordingsList.querySelectorAll('.download').forEach(b => b.onclick = () => window.open(API_BASE + `/api/recordings/${b.dataset.id}/download`, '_blank'));
-  recordingsList.querySelectorAll('.delete').forEach(b => b.onclick = async () => { if (confirm('Delete?')) { await apiFetch(`/api/recordings/${b.dataset.id}`, { method: 'DELETE' }); loadRecordings(); } });
-}
-
-async function playRecording(id) {
-  let player = document.getElementById('audio-player');
-  if (!player) { player = document.createElement('div'); player.id = 'audio-player'; player.className = 'show'; document.querySelector('.recordings-section').appendChild(player); }
-  try {
-    const blob = await (await apiFetch(`/api/recordings/${id}/stream`)).blob();
-    player.innerHTML = `<audio controls autoplay src="${URL.createObjectURL(blob)}"></audio>`;
-  } catch (e) { console.error(e); }
-}
-
-function formatSize(bytes) { if (!bytes) return '0 B'; const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]; }
-
-async function handleOffer(sdp, socketId) {
-  const pc = new RTCPeerConnection(rtcConfig);
-  peerConnections[socketId] = pc;
-  pendingIceCandidates[socketId] = [];
-  if (mediaStreamDestination) pc.addTrack(mediaStreamDestination.stream.getAudioTracks()[0], mediaStreamDestination.stream);
-  pc.onicecandidate = e => { if (e.candidate) socket.emit('ice-candidate', { target: socketId, candidate: e.candidate }); };
-  try {
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit('answer', { socketId, sdp: answer.sdp });
-  } catch (e) { console.error(e); }
-}
-
-socket.on('offer', d => handleOffer(d.sdp, d.socketId));
-socket.on('ice-candidate', async d => {
-  const pc = peerConnections[d.socketId];
-  if (pc?.remoteDescription?.type) { await pc.addIceCandidate(new RTCIceCandidate(d.candidate)); }
-  else if (pc) { (pendingIceCandidates[d.socketId] = pendingIceCandidates[d.socketId] || []).push(d.candidate); }
-});
-socket.on('listener-joined', d => console.log('Listener:', d.socketId));
-
-socket.on('live-status', s => {
-  isLive = s.isLive;
-  liveIndicator.textContent = s.isLive ? '● Live' : '● Offline';
-  liveIndicator.className = 'indicator ' + (s.isLive ? 'live' : 'offline');
-  broadcastStatus.textContent = s.isLive ? 'Broadcasting' : 'Stopped';
-  startRecordingBtn.disabled = !s.isLive;
-});
-socket.on('listener-count', c => listenerCountEl.textContent = `Listeners: ${c}`);
-socket.on('error', m => alert(m));
-
-checkAuth();
-  </script>
+  <script src="/admin/app.js"></script>
 </body>
 </html>

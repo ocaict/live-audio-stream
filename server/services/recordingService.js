@@ -4,6 +4,7 @@ const fs = require('fs');
 const { getRecordingsDir } = require('../config/database');
 const RecordingModel = require('../models/recording');
 const ffmpegService = require('./ffmpegService');
+const ChannelModel = require('../models/channel');
 
 class RecordingService {
   constructor() {
@@ -11,7 +12,7 @@ class RecordingService {
     this.tempFile = null;
   }
 
-  startRecording() {
+  startRecording(channelId) {
     if (this.currentRecording) {
       throw new Error('Recording already in progress');
     }
@@ -19,7 +20,9 @@ class RecordingService {
     const id = uuidv4();
     const today = new Date().toISOString().split('T')[0];
     const recordingsDir = getRecordingsDir();
-    const dateDir = path.join(recordingsDir, today);
+    
+    const channelFolder = channelId || 'default';
+    const dateDir = path.join(recordingsDir, channelFolder, today);
 
     if (!fs.existsSync(dateDir)) {
       fs.mkdirSync(dateDir, { recursive: true });
@@ -30,13 +33,14 @@ class RecordingService {
 
     this.currentRecording = {
       id,
+      channelId,
       tempPath,
       writeStream,
       startTime: Date.now()
     };
 
-    console.log('Recording started:', id);
-    return { id };
+    console.log('Recording started:', id, 'on channel:', channelId);
+    return { id, channelId };
   }
 
   writeChunk(chunk) {
@@ -46,20 +50,22 @@ class RecordingService {
     this.currentRecording.writeStream.write(chunk);
   }
 
-  async stopRecording() {
+  async stopRecording(channelId) {
     if (!this.currentRecording) {
       throw new Error('No recording in progress');
     }
 
-    const { id, tempPath, startTime } = this.currentRecording;
+    const { id, tempPath, startTime, channelId: recChannelId } = this.currentRecording;
     const duration = Math.round((Date.now() - startTime) / 1000);
+    const actualChannelId = channelId || recChannelId;
 
     this.currentRecording.writeStream.end();
     this.currentRecording = null;
 
     const today = new Date().toISOString().split('T')[0];
     const recordingsDir = getRecordingsDir();
-    const dateDir = path.join(recordingsDir, today);
+    const channelFolder = actualChannelId || 'default';
+    const dateDir = path.join(recordingsDir, channelFolder, today);
     const mp3Path = path.join(dateDir, `${id}.mp3`);
 
     try {
@@ -75,6 +81,7 @@ class RecordingService {
         filepath: mp3Path,
         filesize,
         duration,
+        channel_id: actualChannelId,
         created_at: new Date().toISOString()
       };
 

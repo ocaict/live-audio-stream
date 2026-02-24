@@ -8,22 +8,28 @@
     "dev": "node server/app.js",
     "setup-admin": "node server/scripts/setup-admin.js"
   },
-  "keywords": ["webrtc", "radio", "streaming", "live"],
+  "keywords": [
+    "webrtc",
+    "radio",
+    "streaming",
+    "live"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "sql.js": "^1.10.3",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.3.1",
     "fluent-ffmpeg": "^2.1.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "socket.io": "^4.7.4",
+    "sql.js": "^1.10.3",
     "uuid": "^9.0.1"
   },
   "engines": {

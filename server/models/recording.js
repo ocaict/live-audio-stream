@@ -13,14 +13,19 @@ function rowToObject(result) {
 const RecordingModel = {
   create(recording) {
     dbWrapper.run(
-      `INSERT INTO recordings (id, filename, filepath, filesize, duration, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [recording.id, recording.filename, recording.filepath, recording.filesize, recording.duration, recording.created_at]
+      `INSERT INTO recordings (id, filename, filepath, filesize, duration, channel_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [recording.id, recording.filename, recording.filepath, recording.filesize, recording.duration, recording.channel_id || null, recording.created_at]
     );
   },
 
   findAll() {
     const result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC');
+    return rowToObject(result);
+  },
+
+  findByChannelId(channelId) {
+    const result = dbWrapper.exec(`SELECT * FROM recordings WHERE channel_id = '${channelId}' ORDER BY created_at DESC`);
     return rowToObject(result);
   },
 

@@ -32,7 +32,23 @@ async function initializeDatabase() {
       filepath TEXT NOT NULL,
       filesize INTEGER,
       duration INTEGER,
+      channel_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS channels (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      description TEXT,
+      admin_id INTEGER,
+      is_live INTEGER DEFAULT 0,
+      color TEXT DEFAULT '#e94560',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (admin_id) REFERENCES admins(id)
     )
   `);
 
