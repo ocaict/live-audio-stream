@@ -22,7 +22,10 @@ const State = {
 
 const rtcConfig = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' }
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'turn:global.turn.metered.ca:80', username: 'anonymous', credential: 'anonymous' },
+    { urls: 'turn:global.turn.metered.ca:443', username: 'anonymous', credential: 'anonymous' },
   ]
 };
 

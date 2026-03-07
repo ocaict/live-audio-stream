@@ -29,6 +29,7 @@
   - [ ] Environment variables for TURN credentials
   - [ ] Support for Twilio, Metered.ca, or coturn
 
+- [x] Auto-reconnect for listeners (Implemented)
 - [ ] Auto-Reconnect for Broadcasters
   - [ ] Admin auto-reconnect on network drop
   - [ ] Re-establish WebRTC connection automatically
