@@ -30,6 +30,7 @@
     "multer": "^1.4.5-lts.1",
     "socket.io": "^4.7.4",
     "sql.js": "^1.10.3",
+    "twilio": "^5.12.2",
     "uuid": "^9.0.1"
   },
   "engines": {
