@@ -127,26 +127,51 @@ async function startListening() {
 }
 
 async function tryOfflinePlayback() {
+  if (!State.channelId) {
+    updateStatus('No channel selected', 'error');
+    return;
+  }
+  
   try {
     const res = await fetch(`/api/recordings/latest/${State.channelId}`);
+    
     if (!res.ok) {
       updateStatus('Broadcast ended. No recording available.', 'error');
       refreshUI();
       return;
     }
     const recording = await res.json();
+    
+    if (!recording || !recording.id) {
+      updateStatus('Broadcast ended. No recording available.', 'error');
+      refreshUI();
+      return;
+    }
+    
     latestRecordingUrl = `/api/recordings/${recording.id}/stream`;
     
+    audioPlayer.pause();
+    audioPlayer.srcObject = null;
+    audioPlayer.removeAttribute('src');
+    audioPlayer.load();
+    
+    audioPlayer.volume = 1.0;
+    audioPlayer.muted = false;
     audioPlayer.src = latestRecordingUrl;
     audioPlayer.loop = true;
-    audioPlayer.play().then(() => {
-      State.commit('isStreaming', true);
-      updateStatus('Playing recording (offline)', 'success');
-      pulseRing.classList.add('active');
-    }).catch(e => {
-      console.error('Offline playback error:', e);
-      updateStatus('Broadcast ended. No recording available.', 'error');
-    });
+    
+    const playPromise = audioPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        audioPlayer.classList.add('show');
+        State.commit('isStreaming', true);
+        updateStatus('Playing latest recording (offline)', 'success');
+        pulseRing.classList.add('active');
+      }).catch(e => {
+        console.error('Play promise error:', e);
+        updateStatus('Click to play recording', 'error');
+      });
+    }
   } catch (e) {
     console.error('Failed to load offline recording:', e);
     updateStatus('Broadcast ended. Waiting for restart...', 'connecting');
@@ -278,9 +303,9 @@ function attemptReconnect() {
 
     const channel = State.channels.find(c => String(c.id) === String(State.channelId));
     if (!channel || !channel.isLive) {
-      console.log('Channel not live yet, retrying in background...');
+      console.log('Channel not live, trying offline playback...');
       State.commit('isReconnecting', false);
-      attemptReconnect();
+      tryOfflinePlayback();
       return;
     }
 
@@ -366,7 +391,6 @@ socket.on('channels-list', (channelsData) => {
 let lastChannelLiveEvent = null;
 
 socket.on('channel-live', (data) => {
-  // Debounce duplicate events
   const eventKey = `${data.channelId}-${data.isLive}`;
   if (lastChannelLiveEvent === eventKey) {
     return;
@@ -384,12 +408,13 @@ socket.on('channel-live', (data) => {
   }
 
   if (String(State.channelId) === String(data.channelId) && State.intent) {
-    console.log('>>> Matching channel, intent:', State.intent);
-    if (data.isLive && !State.isStreaming) {
+    console.log('>>> Matching channel, intent:', State.intent, 'isLive:', data.isLive, 'isStreaming:', State.isStreaming);
+    if (data.isLive) {
       console.log('>>> Broadcast now live. Connecting to live stream...');
-      audioPlayer.src = '';
       audioPlayer.pause();
+      audioPlayer.src = '';
       audioPlayer.loop = false;
+      latestRecordingUrl = null;
       setTimeout(() => {
         if (State.intent) {
           connectToBroadcast();

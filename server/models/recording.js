@@ -25,17 +25,15 @@ const RecordingModel = {
   },
 
   findByChannelId(channelId) {
-    const result = dbWrapper.exec(`SELECT * FROM recordings WHERE channel_id = '${channelId}' ORDER BY created_at DESC`);
+    const result = dbWrapper.exec('SELECT * FROM recordings WHERE channel_id = ? ORDER BY created_at DESC', [channelId]);
     return rowToObject(result);
   },
 
   findLatestByChannelId(channelId) {
-    // First try to find recording for specific channel
-    let result = dbWrapper.exec(`SELECT * FROM recordings WHERE channel_id = '${channelId}' ORDER BY created_at DESC LIMIT 1`);
+    let result = dbWrapper.exec('SELECT * FROM recordings WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1', [channelId]);
     let rows = rowToObject(result);
     if (rows[0]) return rows[0];
     
-    // Fallback: return any latest recording if no channel-specific recording exists
     result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC LIMIT 1');
     rows = rowToObject(result);
     return rows[0] || null;
@@ -48,7 +46,7 @@ const RecordingModel = {
   },
 
   findById(id) {
-    const result = dbWrapper.exec(`SELECT * FROM recordings WHERE id = '${id}'`);
+    const result = dbWrapper.exec('SELECT * FROM recordings WHERE id = ?', [id]);
     const rows = rowToObject(result);
     return rows[0] || null;
   },

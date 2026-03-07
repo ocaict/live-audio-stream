@@ -90,7 +90,19 @@ module.exports = {
   db: { get: getDb, run: (sql, params) => {
     db.run(sql, params);
     saveDatabase();
-  }, exec: (sql) => db.exec(sql) },
+  }, exec: (sql, params) => {
+    if (params && params.length > 0) {
+      const stmt = db.prepare(sql);
+      stmt.bind(params);
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+      return [{ columns: Object.keys(results[0] || {}), values: results.map(r => Object.values(r)) }];
+    }
+    return db.exec(sql);
+  } },
   initializeDatabase,
   ensureRecordingsDirectory,
   getRecordingsDir: () => CONFIG.RECORDINGS_DIR,
