@@ -29,6 +29,18 @@ const RecordingModel = {
     return rowToObject(result);
   },
 
+  findLatestByChannelId(channelId) {
+    const result = dbWrapper.exec(`SELECT * FROM recordings WHERE channel_id = '${channelId}' ORDER BY created_at DESC LIMIT 1`);
+    const rows = rowToObject(result);
+    return rows[0] || null;
+  },
+
+  findLatest() {
+    const result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC LIMIT 1');
+    const rows = rowToObject(result);
+    return rows[0] || null;
+  },
+
   findById(id) {
     const result = dbWrapper.exec(`SELECT * FROM recordings WHERE id = '${id}'`);
     const rows = rowToObject(result);

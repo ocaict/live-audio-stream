@@ -3,6 +3,8 @@ let peerConnection = null;
 let reconnectAttempts = 0;
 let maxReconnectAttempts = 50;
 let reconnectDelay = 2000;
+let offlineAudio = null;
+let latestRecordingUrl = null;
 
 const State = {
   intent: localStorage.getItem('isListeningIntent') === 'true',
@@ -124,6 +126,33 @@ async function startListening() {
   connectToBroadcast();
 }
 
+async function tryOfflinePlayback() {
+  try {
+    const res = await fetch(`/api/recordings/latest/${State.channelId}`);
+    if (!res.ok) {
+      updateStatus('Broadcast ended. No recording available.', 'error');
+      refreshUI();
+      return;
+    }
+    const recording = await res.json();
+    latestRecordingUrl = `/api/recordings/${recording.id}/stream`;
+    
+    audioPlayer.src = latestRecordingUrl;
+    audioPlayer.loop = true;
+    audioPlayer.play().then(() => {
+      State.commit('isStreaming', true);
+      updateStatus('Playing recording (offline)', 'success');
+      pulseRing.classList.add('active');
+    }).catch(e => {
+      console.error('Offline playback error:', e);
+      updateStatus('Broadcast ended. No recording available.', 'error');
+    });
+  } catch (e) {
+    console.error('Failed to load offline recording:', e);
+    updateStatus('Broadcast ended. Waiting for restart...', 'connecting');
+  }
+}
+
 let isConnecting = false;
 
 async function connectToBroadcast() {
@@ -159,13 +188,13 @@ async function connectToBroadcast() {
       await loadChannels();
       const refreshedChannel = State.channels.find(c => String(c.id) === String(State.channelId));
       if (!refreshedChannel || !refreshedChannel.isLive) {
-        console.log('Target offline/unavailable. Waiting...');
-        refreshUI();
+        console.log('Target offline, trying offline playback...');
+        await tryOfflinePlayback();
         return;
       }
     } else if (!channel.isLive) {
-      console.log('Target offline/unavailable. Waiting...');
-      refreshUI();
+      console.log('Target offline, trying offline playback...');
+      await tryOfflinePlayback();
       return;
     }
 
@@ -271,7 +300,10 @@ function stopListening() {
   }
   socket.emit('leave-listener');
   audioPlayer.srcObject = null;
+  audioPlayer.src = '';
   audioPlayer.pause();
+  audioPlayer.loop = false;
+  latestRecordingUrl = null;
 }
 
 channelSelect.addEventListener('change', (e) => {
@@ -354,19 +386,23 @@ socket.on('channel-live', (data) => {
   if (String(State.channelId) === String(data.channelId) && State.intent) {
     console.log('>>> Matching channel, intent:', State.intent);
     if (data.isLive && !State.isStreaming) {
-      console.log('>>> Broadcast now live. Reconnecting...');
+      console.log('>>> Broadcast now live. Connecting to live stream...');
+      audioPlayer.src = '';
+      audioPlayer.pause();
+      audioPlayer.loop = false;
       setTimeout(() => {
-        if (State.intent && !State.isStreaming) {
+        if (State.intent) {
           connectToBroadcast();
         }
       }, 100);
     } else if (!data.isLive) {
       console.log('>>> Broadcast stopped.');
-      State.commit('isStreaming', false);
       if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
       }
+      State.commit('isStreaming', false);
+      tryOfflinePlayback();
     }
   }
   renderChannelSelector();

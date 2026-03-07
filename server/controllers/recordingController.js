@@ -185,6 +185,31 @@ const recordingController = {
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
+  },
+
+  getLatest(req, res) {
+    try {
+      const recording = RecordingModel.findLatest();
+      if (!recording) {
+        return res.status(404).json({ error: 'No recordings found' });
+      }
+      res.json(recording);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  getLatestByChannel(req, res) {
+    try {
+      const { channelId } = req.params;
+      const recording = RecordingModel.findLatestByChannelId(channelId);
+      if (!recording) {
+        return res.status(404).json({ error: 'No recordings found for this channel' });
+      }
+      res.json(recording);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 

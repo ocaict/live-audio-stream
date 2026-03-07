@@ -28,6 +28,8 @@ const uploadValidation = (req, res, next) => {
 
 router.get('/', authenticateToken, requireAdmin, recordingController.list);
 router.post('/upload', authenticateToken, requireAdmin, uploadValidation, recordingController.upload);
+router.get('/latest/:channelId', recordingController.getLatestByChannel);
+router.get('/latest', recordingController.getLatest);
 router.get('/:id/stream', recordingIdValidation, recordingController.stream);
 router.get('/:id/download', authenticateToken, requireAdmin, recordingIdValidation, recordingController.download);
 router.delete('/:id', authenticateToken, requireAdmin, recordingIdValidation, recordingController.delete);
