@@ -27,7 +27,10 @@ const uploadValidation = (req, res, next) => {
 };
 
 router.get('/', authenticateToken, requireAdmin, recordingController.list);
-router.post('/upload', authenticateToken, requireAdmin, uploadValidation, recordingController.upload);
+router.post('/upload', authenticateToken, requireAdmin, uploadValidation, (req, res, next) => {
+  req.channelId = req.headers['x-channel-id'];
+  next();
+}, recordingController.upload);
 router.get('/latest/:channelId', recordingController.getLatestByChannel);
 router.get('/latest', recordingController.getLatest);
 router.get('/:id/stream', recordingIdValidation, recordingController.stream);

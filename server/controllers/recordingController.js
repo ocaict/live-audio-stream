@@ -68,6 +68,7 @@ const recordingController = {
         cloudUrl,
         filesize,
         duration: 0,
+        channel_id: req.channelId || null,
         created_at: new Date().toISOString()
       };
 

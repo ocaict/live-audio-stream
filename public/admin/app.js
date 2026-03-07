@@ -363,7 +363,10 @@ stopRecordingBtn.addEventListener('click', async () => {
   try {
     const response = await apiFetch('/api/recordings/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'audio/wav' },
+      headers: { 
+        'Content-Type': 'audio/wav',
+        'X-Channel-Id': selectedChannelId
+      },
       body: uint8Array
     });
     const result = await response.json();
