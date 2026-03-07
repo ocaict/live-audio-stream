@@ -30,6 +30,9 @@ class WebRTCService extends EventEmitter {
     if (!channel) return;
 
     channel.isLive = false;
+
+    this.emit('channel-live', { channelId, isLive: false });
+
     channel.broadcasterSocket = null;
 
     for (const [socketId, listenerSocket] of channel.listenerSockets) {
@@ -41,8 +44,6 @@ class WebRTCService extends EventEmitter {
     }
     channel.listenerSockets.clear();
     channel.listenerCount = 0;
-
-    this.emit('channel-live', { channelId, isLive: false });
   }
 
   addListener(socket, channelId) {

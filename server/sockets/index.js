@@ -14,13 +14,15 @@ function setupSocketHandlers(io) {
       if (currentChannelId) {
         if (isBroadcaster) {
           if (recordingService.isRecording()) {
-            recordingService.stopRecording();
+            recordingService.stopRecording(currentChannelId).catch(err => {
+              console.error('Error stopping recording on disconnect:', err.message);
+            });
           }
           webrtcService.stopBroadcast(currentChannelId);
           ChannelModel.setLiveStatus(currentChannelId, false);
-          io.to(currentChannelId).emit('channel-live', { 
-            channelId: currentChannelId, 
-            isLive: false 
+          io.to(currentChannelId).emit('channel-live', {
+            channelId: currentChannelId,
+            isLive: false
           });
         } else {
           webrtcService.removeListener(socket.id, currentChannelId);
@@ -32,8 +34,8 @@ function setupSocketHandlers(io) {
       const { channelId, role } = data;
       currentChannelId = channelId;
       isBroadcaster = role === 'broadcaster';
-      
       socket.join(channelId);
+      console.log(`Socket ${socket.id} joined channel ${channelId} as ${role}`);
     });
 
     socket.on('leave-channel', () => {
@@ -59,7 +61,7 @@ function setupSocketHandlers(io) {
         socket.join(channelId);
         socket.emit('joined-listener');
         webrtcService.sendToBroadcaster(channelId, 'listener-joined', { socketId: socket.id });
-        
+
         const listenerCount = webrtcService.getChannelListenerCount(channelId);
         io.to(channelId).emit('listener-count', { channelId, count: listenerCount });
       } else {
@@ -71,7 +73,7 @@ function setupSocketHandlers(io) {
       if (currentChannelId) {
         webrtcService.removeListener(socket.id, currentChannelId);
         socket.leave(currentChannelId);
-        
+
         const listenerCount = webrtcService.getChannelListenerCount(currentChannelId);
         io.to(currentChannelId).emit('listener-count', { channelId: currentChannelId, count: listenerCount });
       }
@@ -86,7 +88,8 @@ function setupSocketHandlers(io) {
 
       webrtcService.startBroadcast(socket, channelId);
       ChannelModel.setLiveStatus(channelId, true);
-      
+
+      console.log(`>>> Emitting channel-live:true to room ${channelId}`);
       io.to(channelId).emit('channel-live', { channelId, isLive: true });
     });
 
@@ -104,7 +107,8 @@ function setupSocketHandlers(io) {
 
       webrtcService.stopBroadcast(channelId);
       ChannelModel.setLiveStatus(channelId, false);
-      
+
+      console.log(`>>> Emitting channel-live:false to room ${channelId}`);
       io.to(channelId).emit('channel-live', { channelId, isLive: false });
       console.log(`Broadcast stopped on channel ${channelId}`);
     });
@@ -112,7 +116,7 @@ function setupSocketHandlers(io) {
     socket.on('offer', (data) => {
       const { sdp, socketId, channelId } = data;
       const targetChannelId = channelId || currentChannelId;
-      
+
       webrtcService.sendToBroadcaster(targetChannelId, 'offer', {
         sdp,
         socketId
@@ -122,14 +126,14 @@ function setupSocketHandlers(io) {
     socket.on('answer', (data) => {
       const { sdp, socketId, channelId } = data;
       const targetChannelId = channelId || currentChannelId;
-      
+
       webrtcService.sendToListener(targetChannelId, socketId, 'answer', { sdp });
     });
 
     socket.on('ice-candidate', (data) => {
       const { candidate, target, channelId } = data;
       const targetChannelId = channelId || currentChannelId;
-      
+
       if (target === 'broadcaster') {
         webrtcService.sendToBroadcaster(targetChannelId, 'ice-candidate', {
           candidate,

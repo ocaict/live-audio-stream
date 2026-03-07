@@ -59,7 +59,12 @@ class RecordingService {
     const duration = Math.round((Date.now() - startTime) / 1000);
     const actualChannelId = channelId || recChannelId;
 
-    this.currentRecording.writeStream.end();
+    await new Promise((resolve, reject) => {
+      this.currentRecording.writeStream.on('finish', resolve);
+      this.currentRecording.writeStream.on('error', reject);
+      this.currentRecording.writeStream.end();
+    });
+    
     this.currentRecording = null;
 
     const today = new Date().toISOString().split('T')[0];

@@ -7,6 +7,7 @@ let pendingIceCandidates = {};
 let myChannels = [];
 let selectedChannelId = null;
 
+const loaderScreen = document.getElementById('loading-screen');
 const loginScreen = document.getElementById('login-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 const loginForm = document.getElementById('login-form');
@@ -58,8 +59,32 @@ async function checkAuth() {
     if (data.authenticated) {
       showDashboard();
       loadMyChannels();
+    } else {
+      showLogin();
     }
-  } catch (e) { console.error('Auth failed:', e); }
+  } catch (e) {
+    console.error('Auth failed:', e);
+    showLogin();
+  }
+}
+
+function showScreen(screenId) {
+  [loaderScreen, loginScreen, dashboardScreen].forEach(s => {
+    if (s.id === screenId) {
+      s.classList.remove('hidden');
+    } else {
+      s.classList.add('hidden');
+    }
+  });
+}
+
+function showLogin() {
+  showScreen('login-screen');
+}
+
+function showDashboard() {
+  showScreen('dashboard-screen');
+  loadRecordings();
 }
 
 async function login(username, password) {
@@ -74,12 +99,6 @@ async function login(username, password) {
     showDashboard();
     loadMyChannels();
   } catch (e) { loginError.textContent = e.message; }
-}
-
-function showDashboard() {
-  loginScreen.classList.add('hidden');
-  dashboardScreen.classList.remove('hidden');
-  loadRecordings();
 }
 
 function logout() {
@@ -110,16 +129,16 @@ function renderChannelSelector() {
     return;
   }
 
-  channelSelect.innerHTML = '<option value="">Select a channel...</option>' + 
+  channelSelect.innerHTML = '<option value="">Select a channel...</option>' +
     myChannels.map(ch => `<option value="${ch.id}">${ch.name} ${ch.isLive ? '(LIVE)' : ''}</option>`).join('');
-  
+
   startBroadcastBtn.disabled = !selectedChannelId;
 }
 
 channelSelect.addEventListener('change', () => {
   selectedChannelId = channelSelect.value;
   const channel = myChannels.find(c => c.id === selectedChannelId);
-  
+
   if (channel?.isLive) {
     broadcastStatus.textContent = 'This channel is live';
     liveIndicator.textContent = '● Live';
@@ -135,7 +154,7 @@ channelSelect.addEventListener('change', () => {
     stopBroadcastBtn.disabled = true;
     isLive = false;
   }
-  
+
   startRecordingBtn.disabled = !isLive;
 });
 
@@ -169,12 +188,12 @@ saveChannelBtn.addEventListener('click', async () => {
       body: JSON.stringify({ name, description, color })
     });
     const data = await res.json();
-    
+
     if (!res.ok) throw new Error(data.error);
-    
+
     channelStatus.textContent = 'Channel created!';
     channelStatus.style.color = '#00d9a5';
-    
+
     setTimeout(() => {
       channelForm.classList.add('hidden');
       createChannelBtn.classList.remove('hidden');
@@ -182,7 +201,7 @@ saveChannelBtn.addEventListener('click', async () => {
       channelDescInput.value = '';
       channelStatus.textContent = '';
     }, 1000);
-    
+
     loadMyChannels();
   } catch (e) {
     channelStatus.textContent = e.message;
@@ -194,16 +213,16 @@ function encodeWAV(buffers, sampleRate) {
   const numChannels = 1;
   const format = 1;
   const bitDepth = 16;
-  
+
   const length = buffers[0].length;
   const dataSize = length * numChannels * (bitDepth / 8);
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
-  
+
   const writeString = (offset, str) => {
     for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
-  
+
   writeString(0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
   writeString(8, 'WAVE');
@@ -217,14 +236,14 @@ function encodeWAV(buffers, sampleRate) {
   view.setUint16(34, bitDepth, true);
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
-  
+
   let offset = 44;
   for (let i = 0; i < length; i++) {
     const sample = Math.max(-1, Math.min(1, buffers[0][i]));
     view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
     offset += 2;
   }
-  
+
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
@@ -237,15 +256,15 @@ startBroadcastBtn.addEventListener('click', async () => {
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     console.log('Got stream');
-    
+
     audioContext = new AudioContext({ sampleRate: 44100 });
     const source = audioContext.createMediaStreamSource(mediaStream);
     mediaStreamDestination = audioContext.createMediaStreamDestination();
     source.connect(mediaStreamDestination);
-    
+
     const mediaRecorder = new MediaRecorder(mediaStreamDestination.stream, { mimeType: 'audio/webm;codecs=opus' });
     recordedBuffers = [];
-    
+
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     processor.onaudioprocess = (e) => {
       if (isRecording) {
@@ -255,18 +274,18 @@ startBroadcastBtn.addEventListener('click', async () => {
     };
     source.connect(processor);
     processor.connect(audioContext.destination);
-    
+
     if (!socket.connected) {
       broadcastStatus.textContent = 'Socket not connected. Please refresh.';
       return;
     }
-    
+
     socket.emit('join-channel', { channelId: selectedChannelId, role: 'broadcaster' });
-    
+
     setTimeout(() => {
       socket.emit('broadcaster-ready', { channelId: selectedChannelId });
     }, 100);
-    
+
     startBroadcastBtn.disabled = true;
     stopBroadcastBtn.disabled = false;
     startRecordingBtn.disabled = !selectedChannelId;
@@ -281,19 +300,19 @@ startBroadcastBtn.addEventListener('click', async () => {
 });
 
 stopBroadcastBtn.addEventListener('click', () => {
-  if (isRecording) { 
-    alert('Stop recording first'); 
-    return; 
+  if (isRecording) {
+    alert('Stop recording first');
+    return;
   }
-  
+
   socket.emit('stop-broadcasting', { channelId: selectedChannelId });
-  
-  Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch(e) {} });
+
+  Object.values(peerConnections).forEach(pc => { try { pc.close(); } catch (e) { } });
   peerConnections = {};
-  
+
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
   if (audioContext) { audioContext.close(); audioContext = null; }
-  
+
   startBroadcastBtn.disabled = false;
   stopBroadcastBtn.disabled = true;
   startRecordingBtn.disabled = true;
@@ -310,7 +329,6 @@ startRecordingBtn.addEventListener('click', () => {
   startRecordingBtn.disabled = true;
   stopRecordingBtn.disabled = false;
   recordingStatus.textContent = 'Recording...';
-  socket.emit('start-recording', { channelId: selectedChannelId });
 });
 
 stopRecordingBtn.addEventListener('click', async () => {
@@ -318,29 +336,29 @@ stopRecordingBtn.addEventListener('click', async () => {
   isRecording = false;
   stopRecordingBtn.disabled = true;
   recordingStatus.textContent = 'Processing...';
-  
+
   if (recordedBuffers.length === 0) {
     recordingStatus.textContent = 'No audio data';
     return;
   }
-  
+
   const allData = new Float32Array(recordedBuffers.reduce((sum, b) => sum + b.length, 0));
   let offset = 0;
   recordedBuffers.forEach(buf => {
     allData.set(buf, offset);
     offset += buf.length;
   });
-  
+
   const wavBlob = encodeWAV([allData], audioContext.sampleRate);
   const arrayBuffer = await wavBlob.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
-  
+
   console.log('WAV size:', uint8Array.length);
-  
+
   try {
     const response = await apiFetch('/api/recordings/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
+      headers: { 'Content-Type': 'audio/wav' },
       body: uint8Array
     });
     const result = await response.json();
@@ -350,7 +368,7 @@ stopRecordingBtn.addEventListener('click', async () => {
     console.error(e);
     recordingStatus.textContent = 'Error: ' + e.message;
   }
-  
+
   recordedBuffers = [];
 });
 
@@ -366,7 +384,7 @@ function renderRecordings(recordings) {
     recordingsList.innerHTML = '<p class="empty">No recordings</p>';
     return;
   }
-  
+
   recordingsList.innerHTML = recordings.map(r => `
     <div class="recording-item">
       <div class="recording-info">
@@ -380,7 +398,7 @@ function renderRecordings(recordings) {
       </div>
     </div>
   `).join('');
-  
+
   recordingsList.querySelectorAll('.play').forEach(b => b.onclick = () => playRecording(b.dataset.id));
   recordingsList.querySelectorAll('.download').forEach(b => b.onclick = () => window.open(API_URL + `/api/recordings/${b.dataset.id}/download`, '_blank'));
   recordingsList.querySelectorAll('.delete').forEach(b => b.onclick = async () => {
@@ -399,7 +417,7 @@ async function playRecording(id) {
     player.className = 'show';
     document.querySelector('.recordings-section').appendChild(player);
   }
-  
+
   try {
     const res = await apiFetch(`/api/recordings/${id}/stream`);
     const blob = await res.blob();
@@ -462,7 +480,7 @@ socket.on('channel-live', (data) => {
     liveIndicator.className = 'indicator ' + (data.isLive ? 'live' : 'offline');
     broadcastStatus.textContent = data.isLive ? 'Broadcasting' : 'Stopped';
     startRecordingBtn.disabled = !data.isLive;
-    
+
     if (data.isLive) {
       startBroadcastBtn.disabled = true;
       stopBroadcastBtn.disabled = false;
@@ -471,7 +489,7 @@ socket.on('channel-live', (data) => {
       stopBroadcastBtn.disabled = true;
     }
   }
-  
+
   loadMyChannels();
 });
 

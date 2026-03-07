@@ -12,7 +12,14 @@
   </script>
 </head>
 <body>
-  <div id="login-screen" class="screen">
+  <div id="loading-screen" class="screen">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <p>Checking authentication...</p>
+    </div>
+  </div>
+
+  <div id="login-screen" class="screen hidden">
     <div class="login-box">
       <h1>Radio Admin</h1>
       <form id="login-form">

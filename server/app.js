@@ -42,11 +42,8 @@ const io = new Server(server, {
 if (!CONFIG.API_ONLY) {
   app.use(express.static(path.join(__dirname, '../public')));
   
-  // Also serve dist folder for production build
-  app.use(express.static(path.join(__dirname, '../dist')));
-  
   app.get('/listen', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(__dirname, '../public/listener/index.html'));
   });
   
   app.get('/admin', (req, res) => {
@@ -54,7 +51,7 @@ if (!CONFIG.API_ONLY) {
   });
   
   app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(__dirname, '../public/listener/index.html'));
   });
 }
 
