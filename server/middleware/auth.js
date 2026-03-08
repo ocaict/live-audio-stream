@@ -18,6 +18,14 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
+  // Legacy Check: Ensure the ID is a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(user.id)) {
+    console.warn(`[AUTH] Legacy session detected for user ${user.id}. Forcing logout.`);
+    res.clearCookie('token');
+    return res.status(401).json({ error: 'Legacy session detected. Please login again.' });
+  }
+
   req.user = user;
   next();
 };
