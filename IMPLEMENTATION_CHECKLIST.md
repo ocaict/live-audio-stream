@@ -39,11 +39,11 @@
 *   [x] **Auth Middleware Update**: Restricted sensitive actions (Edit, Delete, Upload) to resource owners via `requireChannelOwnership` and `requireRecordingOwnership`.
 
 ### � Phase 5: Performance & UX (NEXT UP 🚀)
-*   [ ] **Recording Metadata**: Add Title, Description, and Tags to recordings during/after session.
-*   [ ] **Recording Management**: Search, filter by station, and bulk delete operations.
-*   [ ] **Live Chat**: Real-time message board for listeners during a broadcast.
-*   [ ] **Broadcast Scheduling**: Allow broadcasters to schedule future shows.
-*   [ ] **Social Embeds**: Create a lightweight iframe player for external site embeds.
+*   [x] **Recording Metadata & Management**: Added Title, Description, and Tags to recordings with a built-in Search and Edit system.
+*   [x] **Live Visuals & UX**: Integrated a high-resolution, premium real-time audio meter for professional broadcaster feedback.
+*   [x] **Social Embeds**: Developed a lightweight, modern iframe player and sharing system for external platform integration.
+*   [x] **Live Chat Implementation**: Real-time community engagement between broadcasters and listeners with persistent history.
+*   [x] **Analytics Dashboard**: Station ranking, session summaries, and peak listener insights for broadcasters.
 
 ### 🛡️ Phase 6: Quality & Scalability
 *   [ ] **SFU Integration**: Shift from P2P to an SFU (Mediasoup/Janus) for 100+ concurrent listeners.

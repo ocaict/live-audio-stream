@@ -67,6 +67,26 @@
           <audio id="audio-player"></audio>
         </div>
       </div>
+
+      <!-- Live Chat Panel -->
+      <div class="chat-panel glass-card">
+        <div class="chat-header">
+          <h3><i data-lucide="messages-square"></i> Live Chat</h3>
+          <span id="chat-status" class="chat-status">Connected</span>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+          <div class="chat-placeholder">Welcome! Join the conversation below.</div>
+        </div>
+        <form id="chat-form" class="chat-input-area">
+          <input type="text" id="chat-username" placeholder="Your name" maxlength="15" autocomplete="off">
+          <div class="input-row">
+            <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
+            <button type="submit" class="send-btn" id="send-btn">
+              <i data-lucide="send"></i>
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
 
     <footer>

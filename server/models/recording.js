@@ -12,6 +12,9 @@ const RecordingModel = {
         duration: recording.duration,
         channel_id: recording.channel_id || null,
         cloud_url: recording.cloud_url || null,
+        title: recording.title || recording.filename || 'Untitled Recording',
+        description: recording.description || '',
+        tags: recording.tags || [],
         created_at: recording.created_at || new Date().toISOString()
       }]);
 
@@ -146,6 +149,24 @@ const RecordingModel = {
 
     if (error) {
       console.error(`Error updating duration for recording ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async updateMetadata(id, metadata) {
+    const { title, description, tags } = metadata;
+    const { error } = await getSupabase()
+      .from('recordings')
+      .update({
+        title: title || undefined,
+        description: description || undefined,
+        tags: tags || undefined,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating metadata for recording ${id}:`, error);
       throw error;
     }
   }

@@ -4,6 +4,7 @@ const cookie = require('cookie');
 
 const webrtcService = require('../services/webrtcService');
 const recordingService = require('../services/recordingService');
+const MessageModel = require('../models/message');
 
 function setupSocketHandlers(io) {
   // Authentication middleware
@@ -69,6 +70,11 @@ function setupSocketHandlers(io) {
       isBroadcaster = role === 'broadcaster';
       socket.join(channelId);
       console.log(`Socket ${socket.id} joined channel ${channelId} as ${role}`);
+
+      // Send chat history
+      MessageModel.findByChannelId(channelId).then(history => {
+        socket.emit('chat-history', { channelId, messages: history });
+      }).catch(e => console.error('Error sending chat history:', e.message));
     });
 
     socket.on('leave-channel', () => {
@@ -97,6 +103,11 @@ function setupSocketHandlers(io) {
 
         const listenerCount = webrtcService.getChannelListenerCount(channelId);
         io.to(channelId).emit('listener-count', { channelId, count: listenerCount });
+
+        // Send chat history for listener too
+        MessageModel.findByChannelId(channelId).then(history => {
+          socket.emit('chat-history', { channelId, messages: history });
+        }).catch(e => console.error('Error sending chat history to listener:', e.message));
       } else {
         socket.emit('no-broadcast');
       }
@@ -227,6 +238,30 @@ function setupSocketHandlers(io) {
         listenerCount: webrtcService.getChannelListenerCount(ch.id)
       }));
       socket.emit('channels-list', channelsWithStatus);
+    });
+
+    socket.on('send-message', async (data) => {
+      const { channelId, content, username } = data;
+      const targetChannelId = channelId || currentChannelId;
+
+      if (!targetChannelId || !content || !username) {
+        socket.emit('error', 'Incomplete message data');
+        return;
+      }
+
+      try {
+        const message = await MessageModel.create({
+          channel_id: targetChannelId,
+          username,
+          content
+        });
+
+        // Broadcast to everyone in the room
+        io.to(targetChannelId).emit('new-message', message);
+      } catch (e) {
+        console.error('Failed to handle send-message:', e.message);
+        socket.emit('error', 'Failed to send message');
+      }
     });
   });
 

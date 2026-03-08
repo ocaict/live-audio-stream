@@ -56,6 +56,18 @@ const channelSelect = document.getElementById('channel-select');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeIcon = document.getElementById('volume-icon');
 
+// Chat UI
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatUsernameInput = document.getElementById('chat-username');
+const sendBtn = document.getElementById('send-btn');
+
+// Load saved username
+if (chatUsernameInput) {
+  chatUsernameInput.value = localStorage.getItem('chatUsername') || '';
+}
+
 // Initialize volume
 if (volumeSlider) {
   volumeSlider.value = State.volume;
@@ -601,6 +613,62 @@ socket.on('no-broadcast', () => {
       attemptReconnect();
     }
   }
+});
+
+/* Interactive Chat Logic */
+socket.on('chat-history', (data) => {
+  if (String(data.channelId) !== String(State.channelId)) return;
+  chatMessages.innerHTML = '';
+  if (data.messages.length === 0) {
+    chatMessages.innerHTML = '<div class="chat-placeholder">Welcome! Join the conversation below.</div>';
+  } else {
+    data.messages.forEach(msg => appendMessage(msg));
+  }
+});
+
+socket.on('new-message', (msg) => {
+  if (String(msg.channel_id) !== String(State.channelId)) return;
+
+  // Remove placeholder if it exists
+  const placeholder = chatMessages.querySelector('.chat-placeholder');
+  if (placeholder) placeholder.remove();
+
+  appendMessage(msg);
+});
+
+function appendMessage(msg) {
+  const currentUsername = chatUsernameInput.value.trim() || 'Anonymous';
+  const isOwn = msg.username === currentUsername;
+
+  const div = document.createElement('div');
+  div.className = `message-item ${isOwn ? 'own' : ''}`;
+
+  div.innerHTML = `
+    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="chat-bubble">${msg.content}</div>
+  `;
+
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const content = chatInput.value.trim();
+  const username = chatUsernameInput.value.trim() || 'Anonymous';
+
+  if (!content || !State.channelId) return;
+
+  // Persist username
+  localStorage.setItem('chatUsername', username);
+
+  socket.emit('send-message', {
+    channelId: State.channelId,
+    content,
+    username
+  });
+
+  chatInput.value = '';
 });
 
 /* Visualizer Logic */

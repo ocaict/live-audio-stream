@@ -122,6 +122,16 @@
                 data-lucide="edit-3"></i></button>
             <button id="delete-channel-btn" class="icon-btn danger" title="Delete Station" disabled><i
                 data-lucide="trash-2"></i></button>
+            <button id="share-channel-btn" class="icon-btn" title="Share Embed" disabled><i
+                data-lucide="share-2"></i></button>
+          </div>
+        </div>
+
+        <div id="share-panel" class="share-panel hidden glass-card-nested">
+          <label>Embed Code</label>
+          <div class="code-box">
+            <code id="embed-code-text"></code>
+            <button id="copy-embed-btn" class="btn primary-small">Copy</button>
           </div>
         </div>
 
@@ -185,6 +195,23 @@
             </div>
           </section>
 
+          <!-- Audio Monitor -->
+          <section class="section-card glass-card monitor-section">
+            <div class="section-header">
+              <h2><i data-lucide="activity"></i> Audio Monitor</h2>
+            </div>
+            <div class="meter-wrapper">
+              <div class="meter-labels">
+                <span>0</span>
+                <span>-12</span>
+                <span>-24</span>
+                <span>-36</span>
+                <span>-48</span>
+              </div>
+              <canvas id="audio-meter-canvas"></canvas>
+            </div>
+          </section>
+
           <!-- Recording Control -->
           <section class="section-card glass-card">
             <div class="section-header">
@@ -206,25 +233,64 @@
         </div>
 
         <!-- Real-time Stats -->
-        <section class="section-card glass-card stats-area">
-          <div class="section-header">
-            <h2><i data-lucide="trending-up"></i> Live Audience Trend</h2>
-            <div id="stats-summary" class="stats-badges">
-              <span class="stat-item">Peak: <b id="peak-listeners">0</b></span>
-            </div>
-          </div>
-          <div class="chart-container">
-            <canvas id="listener-trend-chart"></canvas>
-          </div>
         </section>
 
-        <!-- Latest Recordings -->
+        <!-- Live Chat Section -->
+        <section class="section-card glass-card chat-section">
+          <div class="section-header">
+            <h2><i data-lucide="messages-square"></i> Live Message Board</h2>
+            <div id="chat-status" class="status-msg small">Connected</div>
+          </div>
+          <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+              <div class="chat-placeholder">No messages yet. Start the conversation!</div>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" class="btn primary-small" id="send-chat-btn">
+              <i data-lucide="send"></i>
+            </button>
+          </form>
+        </section>
+        <!-- Live Analytics Grid -->
+        <div class="analytics-grid">
+          <!-- Station Ranking -->
+          <section class="section-card glass-card ranking-section">
+            <div class="section-header">
+              <h2><i data-lucide="bar-chart-3"></i> Station Popularity</h2>
+              <div class="small status-msg">Refreshed every 10s</div>
+            </div>
+            <div id="station-ranking-list" class="ranking-list">
+              <div class="chat-placeholder">Gathering data...</div>
+            </div>
+          </section>
+
+          <!-- Audience Trend -->
+          <section class="section-card glass-card stats-area">
+            <div class="section-header">
+              <h2><i data-lucide="trending-up"></i> Audience Activity</h2>
+              <div id="stats-summary" class="stats-badges">
+                <span class="stat-item">Peak: <b id="peak-listeners">0</b></span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="listener-trend-chart"></canvas>
+            </div>
+          </section>
+        </div>
         <section class="section-card glass-card recordings-container">
           <div class="section-header">
             <h2><i data-lucide="history"></i> Recent Recordings</h2>
-            <button id="refresh-recordings-btn" class="btn-small icon-btn-ghost">
-              <i data-lucide="refresh-cw"></i>
-            </button>
+            <div class="header-actions">
+              <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="recordings-search" placeholder="Search recordings...">
+              </div>
+              <button id="refresh-recordings-btn" class="btn-small icon-btn-ghost">
+                <i data-lucide="refresh-cw"></i>
+              </button>
+            </div>
           </div>
           <div id="recordings-list" class="recordings-list">
             <div class="empty-state">
@@ -239,6 +305,35 @@
     <footer class="main-footer">
       <p>OcaTech-Live Broadcaster Studio • Control Center v2.0</p>
     </footer>
+
+    <!-- Metadata Modal -->
+    <div id="metadata-modal" class="modal hidden">
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h2><i data-lucide="edit-3"></i> Edit Recording Info</h2>
+          <button id="close-metadata-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-recording-id">
+          <div class="field">
+            <label>Title</label>
+            <input type="text" id="edit-recording-title" placeholder="Professional Name">
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea id="edit-recording-description" rows="3" placeholder="What happened in this session?"></textarea>
+          </div>
+          <div class="field">
+            <label>Tags (comma separated)</label>
+            <input type="text" id="edit-recording-tags" placeholder="news, podcast, live">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-metadata-btn" class="btn primary-small">Save Changes</button>
+          <button id="cancel-metadata-btn" class="btn ghost-small">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <audio id="audio-player"></audio>

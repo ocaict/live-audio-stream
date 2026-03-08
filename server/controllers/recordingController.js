@@ -221,6 +221,25 @@ const recordingController = {
     }
   },
 
+  async updateMetadata(req, res) {
+    try {
+      const { id } = req.params;
+      const { title, description, tags } = req.body;
+
+      // Extract only the fields we want to update
+      const updates = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags : [];
+
+      await RecordingModel.updateMetadata(id, updates);
+      res.json({ message: 'Metadata updated successfully' });
+    } catch (error) {
+      console.error('[RecordingController] Error updating metadata:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   async getLatest(req, res) {
     try {
       const recording = await RecordingModel.findLatest();

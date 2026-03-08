@@ -9,6 +9,11 @@ let selectedChannelId = null;
 let editingChannelId = null;
 const editChannelBtn = document.getElementById('edit-channel-btn');
 const deleteChannelBtn = document.getElementById('delete-channel-btn');
+const shareChannelBtn = document.getElementById('share-channel-btn');
+const sharePanel = document.getElementById('share-panel');
+const embedCodeText = document.getElementById('embed-code-text');
+const copyEmbedBtn = document.getElementById('copy-embed-btn');
+const startBroadcastBtn = document.getElementById('start-broadcast-btn');
 
 const loaderScreen = document.getElementById('loading-screen');
 const loginScreen = document.getElementById('login-screen');
@@ -29,19 +34,44 @@ const saveChannelBtn = document.getElementById('save-channel-btn');
 const cancelChannelBtn = document.getElementById('cancel-channel-btn');
 const channelStatus = document.getElementById('channel-status');
 
-const startBroadcastBtn = document.getElementById('start-broadcast-btn');
 const stopBroadcastBtn = document.getElementById('stop-broadcast-btn');
-const broadcastStatus = document.getElementById('broadcast-status');
-const liveIndicator = document.getElementById('live-indicator');
-
 const startRecordingBtn = document.getElementById('start-recording-btn');
 const stopRecordingBtn = document.getElementById('stop-recording-btn');
 const recordingStatus = document.getElementById('recording-status');
-const recordingIdEl = document.getElementById('recording-id');
+const recordingsList = document.getElementById('recordings-list');
+const refreshRecordingsBtn = document.getElementById('refresh-recordings-btn');
+const recordingsSearch = document.getElementById('recordings-search');
 
+const metadataModal = document.getElementById('metadata-modal');
+const closeMetadataModalBtn = document.getElementById('close-metadata-modal');
+const cancelMetadataBtn = document.getElementById('cancel-metadata-btn');
+const saveMetadataBtn = document.getElementById('save-metadata-btn');
+const editRecordingId = document.getElementById('edit-recording-id');
+const editRecordingTitle = document.getElementById('edit-recording-title');
+const editRecordingDescription = document.getElementById('edit-recording-description');
+const editRecordingTags = document.getElementById('edit-recording-tags');
+
+let allRecordings = [];
+const broadcastStatus = document.getElementById('broadcast-status');
+const liveIndicator = document.getElementById('live-indicator');
+const recordingIdEl = document.getElementById('recording-id');
 const logoutBtn = document.getElementById('logout-btn');
 const listenerCountEl = document.getElementById('listener-count');
-const recordingsList = document.getElementById('recordings-list');
+
+// Chat UI
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatStatus = document.getElementById('chat-status');
+
+// Meter Logic
+let meterAnalyser = null;
+let meterAnimationFrame = null;
+const meterCanvas = document.getElementById('audio-meter-canvas');
+const meterCtx = meterCanvas ? meterCanvas.getContext('2d') : null;
+let peakLevel = 0;
+let peakHoldTime = 0;
+const PEAK_HOLD_MAX = 60; // 1 second @ 60fps
 
 let rtcConfig = {
   iceServers: [
@@ -89,11 +119,58 @@ function setupPrefs() {
 }
 setupPrefs();
 
-// --- Charting ---
+// --- Charting & Analytics ---
 let trendChart = null;
 let chartLabels = Array(20).fill(''); // 20 data points
 let chartDataArr = Array(20).fill(0);
 let peakListeners = 0;
+let analyticsRefreshTimer = null;
+
+async function loadAnalytics() {
+  try {
+    const res = await apiFetch('/api/channels');
+    if (!res.ok) throw new Error('Analytics fetch failed');
+    const channels = await res.json();
+    renderStationRanking(channels);
+  } catch (e) {
+    console.error('[Analytics] Error:', e.message);
+  }
+}
+
+function renderStationRanking(channels) {
+  const rankingList = document.getElementById('station-ranking-list');
+  if (!rankingList) return;
+
+  // Use all channels but limit to top 5 in UI
+  const sorted = [...channels].sort((a, b) => (b.listenerCount || 0) - (a.listenerCount || 0)).slice(0, 5);
+  const maxListeners = Math.max(...sorted.map(c => c.listenerCount || 0), 1);
+
+  rankingList.innerHTML = sorted.length ? sorted.map(ch => {
+    const count = ch.listenerCount || 0;
+    const percentage = (count / maxListeners) * 100;
+    const isCurrent = String(ch.id) === String(selectedChannelId);
+
+    return `
+      <div class="ranking-item">
+        <div class="rank-info">
+          <span class="rank-name">${ch.name} ${isCurrent ? '<small>(Viewing)</small>' : ''}</span>
+          <span class="rank-count"><i data-lucide="users" style="width:14px"></i> ${count}</span>
+        </div>
+        <div class="rank-bar-bg">
+          <div class="rank-bar-fill" style="width: ${percentage}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('') : '<div class="chat-placeholder">No station data available.</div>';
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function startAnalyticsRefresh() {
+  if (analyticsRefreshTimer) clearInterval(analyticsRefreshTimer);
+  loadAnalytics();
+  analyticsRefreshTimer = setInterval(loadAnalytics, 10000);
+}
 
 function initChart() {
   const ctx = document.getElementById('listener-trend-chart');
@@ -216,6 +293,8 @@ function showLogin() {
 function showDashboard(user) {
   showScreen('dashboard-screen');
   loadRecordings();
+  initChart();
+  startAnalyticsRefresh();
   if (user && user.username) {
     document.getElementById('header-username').textContent = user.username;
   }
@@ -342,6 +421,7 @@ function renderChannelSelector() {
   startBroadcastBtn.disabled = !selectedChannelId;
   editChannelBtn.disabled = !selectedChannelId;
   deleteChannelBtn.disabled = !selectedChannelId;
+  shareChannelBtn.disabled = !selectedChannelId;
 }
 
 channelSelect.addEventListener('change', () => {
@@ -368,7 +448,35 @@ channelSelect.addEventListener('change', () => {
   startRecordingBtn.disabled = !isLive;
   editChannelBtn.disabled = !selectedChannelId;
   deleteChannelBtn.disabled = !selectedChannelId;
+  shareChannelBtn.disabled = !selectedChannelId;
+  sharePanel.classList.add('hidden');
+  // Refresh analytics/charts for the new channel
   resetChart();
+  initChart();
+  startAnalyticsRefresh();
+});
+
+shareChannelBtn.addEventListener('click', () => {
+  if (!selectedChannelId) return;
+  const isHidden = sharePanel.classList.toggle('hidden');
+  if (!isHidden) {
+    const embedUrl = `${window.location.origin}/embed.html?channel=${selectedChannelId}`;
+    const iframeCode = `<iframe src="${embedUrl}" width="100%" height="80" frameborder="0" allow="autoplay"></iframe>`;
+    embedCodeText.textContent = iframeCode;
+  }
+});
+
+copyEmbedBtn.addEventListener('click', () => {
+  const code = embedCodeText.textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const originalText = copyEmbedBtn.textContent;
+    copyEmbedBtn.textContent = 'Copied!';
+    copyEmbedBtn.classList.replace('primary-small', 'success-small'); // Use success color if exists
+    setTimeout(() => {
+      copyEmbedBtn.textContent = originalText;
+      copyEmbedBtn.classList.replace('success-small', 'primary-small');
+    }, 2000);
+  });
 });
 
 editChannelBtn.addEventListener('click', () => {
@@ -529,6 +637,8 @@ async function startBroadcast(channelId) {
     mediaStreamDestination = audioContext.createMediaStreamDestination();
     source.connect(mediaStreamDestination);
 
+    initAudioMeter(source);
+
     if (!socket.connected) {
       broadcastStatus.textContent = 'Socket not connected. Please refresh.';
       return;
@@ -585,6 +695,8 @@ stopBroadcastBtn.addEventListener('click', () => {
   liveIndicator.className = 'indicator offline';
   isLive = false;
 
+  stopAudioMeter();
+
   sessionStorage.removeItem('activeChannelId');
 });
 
@@ -640,14 +752,144 @@ stopRecordingBtn.addEventListener('click', async () => {
   mediaRecorder = null;
 });
 
+function initAudioMeter(source) {
+  if (!audioContext || !meterCtx) return;
+
+  meterAnalyser = audioContext.createAnalyser();
+  meterAnalyser.fftSize = 256;
+  source.connect(meterAnalyser);
+
+  // Resize canvas to match display size
+  const dpr = window.devicePixelRatio || 1;
+  const rect = meterCanvas.getBoundingClientRect();
+  meterCanvas.width = rect.width * dpr;
+  meterCanvas.height = rect.height * dpr;
+  meterCtx.scale(dpr, dpr);
+
+  drawMeter();
+}
+
+function stopAudioMeter() {
+  if (meterAnimationFrame) {
+    cancelAnimationFrame(meterAnimationFrame);
+    meterAnimationFrame = null;
+  }
+  if (meterCtx) {
+    meterCtx.clearRect(0, 0, meterCanvas.width, meterCanvas.height);
+  }
+}
+
+function drawMeter() {
+  if (!meterAnalyser || !isLive) return;
+
+  const bufferLength = meterAnalyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  meterAnalyser.getByteFrequencyData(dataArray);
+
+  // Calculate RMS/Volume
+  let sum = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    sum += dataArray[i] * dataArray[i];
+  }
+  const rms = Math.sqrt(sum / bufferLength);
+  const normalizedValue = Math.min(1, rms / 128); // Normalize to 0-1
+
+  const width = meterCanvas.clientWidth;
+  const height = meterCanvas.clientHeight;
+  meterCtx.clearRect(0, 0, width, height);
+
+  // Background track
+  meterCtx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  meterCtx.fillRect(0, 0, width, height);
+
+  // Gradient based on level
+  const gradient = meterCtx.createLinearGradient(0, height, 0, 0);
+  gradient.addColorStop(0, '#00f2ea'); // Cyan
+  gradient.addColorStop(0.6, '#ffd60a'); // Yellow
+  gradient.addColorStop(1, '#ff2d55'); // Red
+
+  const barHeight = height * normalizedValue;
+  meterCtx.fillStyle = gradient;
+  meterCtx.fillRect(0, height - barHeight, width, barHeight);
+
+  // Peak hold logic
+  if (normalizedValue > peakLevel) {
+    peakLevel = normalizedValue;
+    peakHoldTime = PEAK_HOLD_MAX;
+  } else if (peakHoldTime > 0) {
+    peakHoldTime--;
+  } else {
+    peakLevel *= 0.95; // Decay
+  }
+
+  // Draw Peak line
+  if (peakLevel > 0.01) {
+    meterCtx.fillStyle = peakLevel > 0.8 ? '#ff2d55' : 'rgba(255, 255, 255, 0.5)';
+    meterCtx.fillRect(0, height - (height * peakLevel), width, 2);
+  }
+
+  meterAnimationFrame = requestAnimationFrame(drawMeter);
+}
+
+// --- Live Chat Logic ---
+socket.on('chat-history', (data) => {
+  if (data.channelId !== selectedChannelId) return;
+  chatMessages.innerHTML = '';
+  if (data.messages.length === 0) {
+    chatMessages.innerHTML = '<div class="chat-placeholder">No messages yet. Start the conversation!</div>';
+  } else {
+    data.messages.forEach(msg => appendMessage(msg));
+  }
+});
+
+socket.on('new-message', (msg) => {
+  if (msg.channel_id !== selectedChannelId) return;
+
+  // Remove placeholder if it exists
+  const placeholder = chatMessages.querySelector('.chat-placeholder');
+  if (placeholder) placeholder.remove();
+
+  appendMessage(msg);
+});
+
+function appendMessage(msg) {
+  const isOwn = msg.username === 'admin'; // For dashboard we assume broadcaster is 'admin' or use station name
+  const div = document.createElement('div');
+  div.className = `message-item ${isOwn ? 'own' : ''}`;
+
+  div.innerHTML = `
+    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="chat-bubble">${msg.content}</div>
+  `;
+
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const content = chatInput.value.trim();
+  if (!content || !selectedChannelId) return;
+
+  socket.emit('send-message', {
+    channelId: selectedChannelId,
+    content,
+    username: 'Broadcaster' // Default for dashboard
+  });
+
+  chatInput.value = '';
+});
+
 async function loadRecordings() {
   try {
     const res = await apiFetch('/api/recordings');
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to load recordings');
-    renderRecordings(Array.isArray(data) ? data : []);
+    allRecordings = Array.isArray(data) ? data : [];
+    renderRecordings(allRecordings);
   } catch (e) {
     console.error(e);
+    allRecordings = [];
     renderRecordings([]);
   }
 }
@@ -658,33 +900,125 @@ function renderRecordings(recordings) {
   }
 
   if (recordings.length === 0) {
-    recordingsList.innerHTML = '<p class="empty">No recordings</p>';
+    recordingsList.innerHTML = `
+      <div class="empty-state">
+        <i data-lucide="music"></i>
+        <p>No recordings found yet.</p>
+      </div>
+    `;
+    lucide.createIcons();
     return;
   }
 
-  recordingsList.innerHTML = recordings.map(r => `
-    <div class="recording-item">
-      <div class="recording-info">
-        <div class="filename">${r.filename}</div>
-        <div class="meta">${new Date(r.created_at).toLocaleString()} • ${formatSize(r.filesize)}</div>
+  recordingsList.innerHTML = recordings.map(r => {
+    const title = r.title || r.filename || 'Untitled Recording';
+    const tags = Array.isArray(r.tags) ? r.tags : (r.tags ? r.tags.split(',') : []);
+
+    return `
+      <div class="recording-item glass-card">
+        <div class="recording-info">
+          <div class="rec-title">${title}</div>
+          <div class="rec-filename">${r.filename}</div>
+          ${r.description ? `<div class="rec-description">${r.description}</div>` : ''}
+          <div class="rec-meta">
+            ${new Date(r.created_at).toLocaleString()} • ${formatSize(r.filesize)}
+          </div>
+          ${tags.length > 0 ? `
+            <div class="rec-tags">
+              ${tags.map(t => `<span class="tag-pill">${t.trim()}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+        <div class="recording-actions">
+          <button class="btn-icon play" data-id="${r.id}" title="Play"><i data-lucide="play-circle"></i></button>
+          <button class="btn-icon edit" data-id="${r.id}" title="Edit Info"><i data-lucide="edit-3"></i></button>
+          <button class="btn-icon download" data-id="${r.id}" title="Download"><i data-lucide="download"></i></button>
+          <button class="btn-icon delete" data-id="${r.id}" title="Delete"><i data-lucide="trash-2"></i></button>
+        </div>
       </div>
-      <div class="recording-actions">
-        <button class="play" data-id="${r.id}">Play</button>
-        <button class="download" data-id="${r.id}">Download</button>
-        <button class="delete" data-id="${r.id}">Delete</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+
+  lucide.createIcons();
 
   recordingsList.querySelectorAll('.play').forEach(b => b.onclick = () => playRecording(b.dataset.id));
+  recordingsList.querySelectorAll('.edit').forEach(b => b.onclick = () => openMetadataModal(b.dataset.id));
   recordingsList.querySelectorAll('.download').forEach(b => b.onclick = () => window.open(API_URL + `/api/recordings/${b.dataset.id}/download`, '_blank'));
   recordingsList.querySelectorAll('.delete').forEach(b => b.onclick = async () => {
-    if (confirm('Delete?')) {
-      await apiFetch(`/api/recordings/${b.dataset.id}`, { method: 'DELETE' });
-      loadRecordings();
+    if (confirm('Permanently delete this recording?')) {
+      try {
+        const res = await apiFetch(`/api/recordings/${b.dataset.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        loadRecordings();
+      } catch (e) { alert(e.message); }
     }
   });
 }
+
+function openMetadataModal(id) {
+  const rec = allRecordings.find(r => r.id === id);
+  if (!rec) return;
+
+  editRecordingId.value = rec.id;
+  editRecordingTitle.value = rec.title || '';
+  editRecordingDescription.value = rec.description || '';
+  editRecordingTags.value = Array.isArray(rec.tags) ? rec.tags.join(', ') : (rec.tags || '');
+
+  metadataModal.classList.remove('hidden');
+}
+
+function closeMetadataModal() {
+  metadataModal.classList.add('hidden');
+}
+
+async function saveMetadata() {
+  const id = editRecordingId.value;
+  const title = editRecordingTitle.value;
+  const description = editRecordingDescription.value;
+  const tags = editRecordingTags.value.split(',').map(t => t.trim()).filter(t => t !== '');
+
+  saveMetadataBtn.disabled = true;
+  saveMetadataBtn.textContent = 'Saving...';
+
+  try {
+    const res = await apiFetch(`/api/recordings/${id}/metadata`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, tags })
+    });
+
+    if (!res.ok) throw new Error('Failed to update metadata');
+
+    closeMetadataModal();
+    loadRecordings();
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    saveMetadataBtn.disabled = false;
+    saveMetadataBtn.textContent = 'Save Changes';
+  }
+}
+
+recordingsSearch.addEventListener('input', (e) => {
+  const query = e.target.value.toLowerCase();
+  const filtered = allRecordings.filter(r => {
+    const title = (r.title || '').toLowerCase();
+    const filename = (r.filename || '').toLowerCase();
+    const desc = (r.description || '').toLowerCase();
+    const tags = Array.isArray(r.tags) ? r.tags.join(' ') : (r.tags || '');
+
+    return title.includes(query) ||
+      filename.includes(query) ||
+      desc.includes(query) ||
+      tags.toLowerCase().includes(query);
+  });
+  renderRecordings(filtered);
+});
+
+closeMetadataModalBtn.addEventListener('click', closeMetadataModal);
+cancelMetadataBtn.addEventListener('click', closeMetadataModal);
+saveMetadataBtn.addEventListener('click', saveMetadata);
+refreshRecordingsBtn.addEventListener('click', loadRecordings);
 
 async function playRecording(id) {
   let player = document.getElementById('audio-player');
