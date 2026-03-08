@@ -525,7 +525,13 @@ socket.on('channel-live', (data) => {
   if (String(State.channelId) === String(data.channelId) && State.intent) {
     console.log('>>> Matching channel, intent:', State.intent, 'isLive:', data.isLive, 'isStreaming:', State.isStreaming);
     if (data.isLive) {
-      console.log('>>> Broadcast now live. Connecting to live stream...');
+      console.log('>>> Broadcast now live. Stopping Auto-DJ and connecting to live stream...');
+      // Stop Auto-DJ immediately so there's no double-audio
+      if (djIsActive) {
+        stopDJAudio();
+        const nowPlayingEl = document.getElementById('now-playing-bar');
+        if (nowPlayingEl) nowPlayingEl.style.display = 'none';
+      }
       audioPlayer.pause();
       audioPlayer.src = '';
       audioPlayer.loop = false;

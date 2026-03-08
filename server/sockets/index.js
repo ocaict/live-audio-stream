@@ -284,6 +284,8 @@ function setupSocketHandlers(io) {
         return;
       }
       startAutoDJ(channelId, io);
+      // Emit directly to admin socket so badge updates even if not in channel room
+      socket.emit('autodj-started', { channelId });
       socket.emit('autodj-control-ack', { started: true, channelId });
     });
 
@@ -293,6 +295,8 @@ function setupSocketHandlers(io) {
       if (!channelId) { socket.emit('error', 'channelId required'); return; }
       autoDJService.stop(channelId);
       io.to(channelId).emit('autodj-stopped', { channelId, reason: 'admin_stopped' });
+      // Also emit directly to admin socket
+      socket.emit('autodj-stopped', { channelId, reason: 'admin_stopped' });
       socket.emit('autodj-control-ack', { stopped: true, channelId });
     });
 
