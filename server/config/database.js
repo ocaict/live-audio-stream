@@ -33,9 +33,16 @@ async function initializeDatabase() {
       filesize INTEGER,
       duration INTEGER,
       channel_id TEXT,
+      cloud_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  try {
+    db.run('ALTER TABLE recordings ADD COLUMN cloud_url TEXT');
+  } catch (e) {
+    // Column already exists
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS channels (

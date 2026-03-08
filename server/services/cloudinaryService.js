@@ -23,7 +23,7 @@ async function uploadAudio(buffer, filename) {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        resource_type: 'raw',
+        resource_type: 'auto',
         folder: CONFIG.CLOUDINARY_FOLDER,
         public_id: filename.replace(/\.[^/.]+$/, ''),
         format: filename.split('.').pop()

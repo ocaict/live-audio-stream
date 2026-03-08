@@ -13,9 +13,9 @@ function rowToObject(result) {
 const RecordingModel = {
   create(recording) {
     dbWrapper.run(
-      `INSERT INTO recordings (id, filename, filepath, filesize, duration, channel_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [recording.id, recording.filename, recording.filepath, recording.filesize, recording.duration, recording.channel_id || null, recording.created_at]
+      `INSERT INTO recordings (id, filename, filepath, filesize, duration, channel_id, cloud_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [recording.id, recording.filename, recording.filepath, recording.filesize, recording.duration, recording.channel_id || null, recording.cloud_url || null, recording.created_at]
     );
   },
 
@@ -33,7 +33,7 @@ const RecordingModel = {
     let result = dbWrapper.exec('SELECT * FROM recordings WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1', [channelId]);
     let rows = rowToObject(result);
     if (rows[0]) return rows[0];
-    
+
     result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC LIMIT 1');
     rows = rowToObject(result);
     return rows[0] || null;

@@ -65,7 +65,7 @@ const recordingController = {
         id,
         filename,
         filepath: filePath,
-        cloudUrl,
+        cloud_url: cloudUrl,
         filesize,
         duration: 0,
         channel_id: req.channelId || null,
@@ -90,12 +90,21 @@ const recordingController = {
       }
 
       // If cloud URL exists, redirect to it
-      if (recording.cloudUrl) {
-        return res.redirect(recording.cloudUrl);
+      if (recording.cloud_url) {
+        return res.redirect(recording.cloud_url);
       }
 
       const filePath = recording.filepath;
+
+      // Fallback: If it looks like a Cloudinary path but cloud_url is missing
+      if (!recording.cloud_url && filePath.startsWith(CONFIG.CLOUDINARY_FOLDER)) {
+        console.log('Detected Cloudinary path but missing cloud_url, constructing URL (raw)...');
+        const cloudUrl = `https://res.cloudinary.com/${CONFIG.CLOUDINARY_CLOUD_NAME}/raw/upload/${filePath}`;
+        return res.redirect(cloudUrl);
+      }
+
       if (!fs.existsSync(filePath)) {
+        console.error('File not found on disk:', filePath);
         return res.status(404).json({ error: 'File not found on disk' });
       }
 
@@ -103,8 +112,8 @@ const recordingController = {
       const fileSize = stat.size;
       const range = req.headers.range;
 
-      const contentType = filePath.endsWith('.wav') ? 'audio/wav' : 
-                         filePath.endsWith('.webm') ? 'audio/webm' : 'audio/mpeg';
+      const contentType = filePath.endsWith('.wav') ? 'audio/wav' :
+        filePath.endsWith('.webm') ? 'audio/webm' : 'audio/mpeg';
 
       if (range) {
         const parts = range.replace(/bytes=/, '').split('-');
@@ -146,8 +155,8 @@ const recordingController = {
       }
 
       // If cloud URL exists, redirect to it
-      if (recording.cloudUrl) {
-        return res.redirect(recording.cloudUrl);
+      if (recording.cloud_url) {
+        return res.redirect(recording.cloud_url);
       }
 
       const filePath = recording.filepath;
@@ -171,13 +180,13 @@ const recordingController = {
       }
 
       // Delete from Cloudinary if was uploaded there
-      if (recording.cloudUrl && cloudinaryService.isEnabled()) {
+      if (recording.cloud_url && cloudinaryService.isEnabled()) {
         // Cloudinary deletion would require additional SDK call
-        console.log('Recording was on Cloudinary:', recording.cloudUrl);
+        console.log('Recording was on Cloudinary:', recording.cloud_url);
       }
 
       // Delete local file if exists
-      if (recording.filepath && !recording.cloudUrl && fs.existsSync(recording.filepath)) {
+      if (recording.filepath && !recording.cloud_url && fs.existsSync(recording.filepath)) {
         fs.unlinkSync(recording.filepath);
       }
 
