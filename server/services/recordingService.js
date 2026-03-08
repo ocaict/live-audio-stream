@@ -9,20 +9,23 @@ const cloudinaryService = require('./cloudinaryService');
 
 class RecordingService {
   constructor() {
-    this.currentRecording = null;
-    this.tempFile = null;
+    this.recordings = new Map();
   }
 
   startRecording(channelId) {
-    if (this.currentRecording) {
-      throw new Error('Recording already in progress');
+    if (!channelId) {
+      throw new Error('Channel ID is required to start recording');
+    }
+
+    if (this.recordings.has(channelId)) {
+      throw new Error('Recording already in progress for this channel');
     }
 
     const id = uuidv4();
     const today = new Date().toISOString().split('T')[0];
     const recordingsDir = getRecordingsDir();
 
-    const channelFolder = channelId || 'default';
+    const channelFolder = channelId;
     const dateDir = path.join(recordingsDir, channelFolder, today);
 
     if (!fs.existsSync(dateDir)) {
@@ -32,7 +35,7 @@ class RecordingService {
     const tempPath = path.join(dateDir, `${id}.webm`);
     const writeStream = fs.createWriteStream(tempPath);
 
-    this.currentRecording = {
+    const recordingContext = {
       id,
       channelId,
       tempPath,
@@ -40,58 +43,59 @@ class RecordingService {
       startTime: Date.now()
     };
 
+    this.recordings.set(channelId, recordingContext);
+
     console.log('Recording started:', id, 'on channel:', channelId);
     return { id, channelId };
   }
 
-  writeChunk(chunk) {
-    if (!this.currentRecording || !this.currentRecording.writeStream) {
+  writeChunk(channelId, chunk) {
+    const recording = this.recordings.get(channelId);
+    if (!recording || !recording.writeStream) {
       return;
     }
 
     try {
-      // Ensure chunk is a buffer
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      this.currentRecording.writeStream.write(buffer);
+      recording.writeStream.write(buffer);
     } catch (error) {
-      console.error('Error writing recording chunk:', error.message);
+      console.error(`Error writing recording chunk for channel ${channelId}:`, error.message);
     }
   }
 
   async stopRecording(channelId) {
-    if (!this.currentRecording) {
-      throw new Error('No recording in progress');
+    const recordingContext = this.recordings.get(channelId);
+    if (!recordingContext) {
+      throw new Error('No recording in progress for this channel');
     }
 
-    const { id, tempPath, startTime, channelId: recChannelId, writeStream } = this.currentRecording;
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    const actualChannelId = channelId || recChannelId;
+    // Immediately remove from map so new recording can't conflict while finalizing
+    this.recordings.delete(channelId);
 
-    console.log(`Stopping recording ${id}. Finalizing file...`);
+    const { id, tempPath, startTime, writeStream } = recordingContext;
+    const duration = Math.round((Date.now() - startTime) / 1000);
+
+    console.log(`Stopping recording ${id} on channel ${channelId}. Finalizing file...`);
 
     // Wait for the stream to finish properly
     await new Promise((resolve, reject) => {
       writeStream.on('finish', resolve);
       writeStream.on('error', (err) => {
-        console.error('WriteStream error during stop:', err);
+        console.error(`WriteStream error during stop for channel ${channelId}:`, err);
         reject(err);
       });
       writeStream.end();
     });
 
-    this.currentRecording = null;
-
     const today = new Date().toISOString().split('T')[0];
     const recordingsDir = getRecordingsDir();
-    const channelFolder = actualChannelId || 'default';
-    const dateDir = path.join(recordingsDir, channelFolder, today);
+    const dateDir = path.join(recordingsDir, channelId, today);
     const mp3Path = path.join(dateDir, `${id}.mp3`);
 
     try {
       console.log(`Converting ${tempPath} to MP3...`);
       await ffmpegService.convertWebMToMp3(tempPath, mp3Path);
 
-      // Verification: Check if file exists and has content
       if (!fs.existsSync(mp3Path)) {
         throw new Error('Conversion failed: Output file does not exist');
       }
@@ -106,7 +110,6 @@ class RecordingService {
       let cloudUrl = null;
       let cloudId = null;
 
-      // Upload to Cloudinary if enabled
       if (cloudinaryService.isEnabled()) {
         try {
           console.log(`Uploading ${id}.mp3 to Cloudinary...`);
@@ -114,19 +117,19 @@ class RecordingService {
           const uploadResult = await cloudinaryService.uploadAudio(fileBuffer, `${id}.mp3`);
           cloudUrl = uploadResult.url;
           cloudId = uploadResult.publicId;
-          console.log(`Cloudinary upload successful: ${cloudUrl}`);
+          console.log(`Cloudinary upload successful for channel ${channelId}: ${cloudUrl}`);
         } catch (cloudError) {
-          console.error('Cloudinary upload failed, keeping local file:', cloudError.message);
+          console.error(`Cloudinary upload failed for channel ${channelId}, keeping local file:`, cloudError.message);
         }
       }
 
       const recording = {
         id,
         filename: `${id}.mp3`,
-        filepath: cloudId || mp3Path, // Use cloudId as filepath for cloud recordings
+        filepath: cloudId || mp3Path,
         filesize,
         duration,
-        channel_id: actualChannelId,
+        channel_id: channelId,
         cloud_url: cloudUrl,
         created_at: new Date().toISOString()
       };
@@ -139,22 +142,24 @@ class RecordingService {
         ffmpegService.deleteFile(mp3Path);
       }
 
-      console.log('Recording finalized and saved:', cloudUrl || mp3Path);
+      console.log(`Recording finalized and saved for channel ${channelId}:`, cloudUrl || mp3Path);
       return recording;
     } catch (error) {
-      console.error('Error finalizing recording:', error.message);
-      // Attempt cleanup even on failure
+      console.error(`Error finalizing recording for channel ${channelId}:`, error.message);
       if (fs.existsSync(tempPath)) ffmpegService.deleteFile(tempPath);
       throw error;
     }
   }
 
-  getCurrentRecording() {
-    return this.currentRecording;
+  getCurrentRecording(channelId) {
+    return this.recordings.get(channelId);
   }
 
-  isRecording() {
-    return !!this.currentRecording;
+  isRecording(channelId) {
+    if (channelId) {
+      return this.recordings.has(channelId);
+    }
+    return this.recordings.size > 0;
   }
 }
 

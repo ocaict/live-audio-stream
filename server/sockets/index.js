@@ -37,9 +37,9 @@ function setupSocketHandlers(io) {
       console.log('Client disconnected:', socket.id);
       if (currentChannelId) {
         if (isBroadcaster) {
-          if (recordingService.isRecording()) {
+          if (recordingService.isRecording(currentChannelId)) {
             recordingService.stopRecording(currentChannelId).catch(err => {
-              console.error('Error stopping recording on disconnect:', err.message);
+              console.error(`Error stopping recording on disconnect for channel ${currentChannelId}:`, err.message);
             });
           }
           webrtcService.stopBroadcast(currentChannelId);
@@ -128,7 +128,7 @@ function setupSocketHandlers(io) {
         return;
       }
 
-      if (recordingService.isRecording()) {
+      if (recordingService.isRecording(channelId)) {
         socket.emit('error', 'Stop recording first before stopping broadcast');
         return;
       }
@@ -191,8 +191,8 @@ function setupSocketHandlers(io) {
 
     socket.on('stop-recording', async (data) => {
       const channelId = data?.channelId || currentChannelId;
-      if (!recordingService.isRecording()) {
-        socket.emit('error', 'No recording in progress');
+      if (!recordingService.isRecording(channelId)) {
+        socket.emit('error', 'No recording in progress for this channel');
         return;
       }
       try {
@@ -205,8 +205,8 @@ function setupSocketHandlers(io) {
     });
 
     socket.on('audio-chunk', (chunk) => {
-      if (recordingService.isRecording()) {
-        recordingService.writeChunk(Buffer.from(chunk));
+      if (currentChannelId && recordingService.isRecording(currentChannelId)) {
+        recordingService.writeChunk(currentChannelId, Buffer.from(chunk));
       }
     });
 
