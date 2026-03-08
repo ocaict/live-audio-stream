@@ -15,7 +15,13 @@ const UserModel = {
 
         if (error) {
             if (error.code === 'PGRST116') return null; // Not found
-            console.error(`[UserModel] Error finding user "${cleanUsername}":`, error);
+
+            console.error(`[UserModel] Database error for "${cleanUsername}":`, {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
             return null;
         }
         return data;
