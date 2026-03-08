@@ -677,6 +677,7 @@ body {
   display: flex;
   flex-direction: column;
   max-width: 85%;
+  align-self: flex-start;
   animation: messageSlide 0.2s ease-out;
 }
 
@@ -688,25 +689,33 @@ body {
   font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-dim);
-  margin-bottom: 0.25rem;
-  padding: 0 0.5rem;
+  margin-bottom: 0.2rem;
+  padding: 0 0.25rem;
+  align-self: flex-start;
+}
+
+.own .message-meta {
+  align-self: flex-end;
 }
 
 .chat-bubble {
-  padding: 0.6rem 0.875rem;
-  background: var(--card-nested);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px 12px 12px 4px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(32, 44, 51, 0.85);
+  /* WhatsApp dark incoming feel */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px 8px 8px 0;
   font-size: 0.9rem;
   line-height: 1.4;
   word-break: break-word;
+  color: #e9edef;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .own .chat-bubble {
-  background: var(--primary);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-radius: 12px 12px 4px 12px;
+  background: rgba(0, 92, 75, 0.85);
+  /* WhatsApp dark outgoing */
+  border-color: rgba(0, 242, 234, 0.15);
+  border-radius: 8px 8px 0 8px;
 }
 
 .chat-input-area {
