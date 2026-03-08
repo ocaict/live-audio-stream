@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { requireBroadcasterOrAdmin } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const mediaController = require('../controllers/mediaController');
 
 // Configure multer for memory storage 
@@ -14,7 +14,7 @@ const upload = multer({
 });
 
 // Require auth for all media management
-router.use(requireBroadcasterOrAdmin);
+router.use(authenticateToken);
 
 router.get('/', mediaController.list);
 router.post('/upload', upload.single('mediaFile'), mediaController.upload);
