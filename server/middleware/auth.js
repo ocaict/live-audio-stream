@@ -53,8 +53,39 @@ const requireChannelOwnership = async (req, res, next) => {
   }
 };
 
+const requireRecordingOwnership = async (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+
+  if (req.user.role === 'admin') return next();
+
+  const recordingId = req.params.id;
+  if (!recordingId) return res.status(400).json({ error: 'Recording ID required' });
+
+  try {
+    const recording = await RecordingModel.findById(recordingId);
+    if (!recording) return res.status(404).json({ error: 'Recording not found' });
+
+    if (!recording.channel_id) {
+      return res.status(403).json({ error: 'Access denied: Orphaned recording' });
+    }
+
+    const channel = await ChannelModel.findById(recording.channel_id);
+    if (!channel) return res.status(404).json({ error: 'Associated channel not found' });
+
+    if (String(channel.admin_id) !== String(req.user.id)) {
+      console.warn(`[AUTH] User ${req.user.id} attempted to access restricted recording ${recordingId}`);
+      return res.status(403).json({ error: 'Access denied: You do not own the channel for this recording' });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Recording ownership verification failed' });
+  }
+};
+
 module.exports = {
   authenticateToken,
   requireAdmin,
-  requireChannelOwnership
+  requireChannelOwnership,
+  requireRecordingOwnership
 };
