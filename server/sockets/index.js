@@ -5,6 +5,7 @@ const cookie = require('cookie');
 const webrtcService = require('../services/webrtcService');
 const recordingService = require('../services/recordingService');
 const MessageModel = require('../models/message');
+const autoDJService = require('../services/autoDJService');
 
 function setupSocketHandlers(io) {
   // Authentication middleware
@@ -51,6 +52,8 @@ function setupSocketHandlers(io) {
                 console.error(`[Grace Period] Error stopping recording for ${currentChannelId}:`, err.message);
               }
             }
+            // Auto-DJ kicks in when broadcaster does not return
+            startAutoDJ(currentChannelId, io);
           });
         } else {
           webrtcService.removeListener(socket.id, currentChannelId);
@@ -128,6 +131,13 @@ function setupSocketHandlers(io) {
       if (!channelId) {
         socket.emit('error', 'Channel ID required');
         return;
+      }
+
+      // Stop Auto-DJ immediately when a real broadcaster takes over
+      if (autoDJService.isRunning(channelId)) {
+        console.log(`[AutoDJ] Real broadcaster took over channel ${channelId}. Stopping Auto-DJ.`);
+        autoDJService.stop(channelId);
+        io.to(channelId).emit('autodj-stopped', { channelId, reason: 'broadcaster_took_over' });
       }
 
       webrtcService.startBroadcast(socket, channelId);
@@ -263,6 +273,45 @@ function setupSocketHandlers(io) {
         socket.emit('error', 'Failed to send message');
       }
     });
+
+    // ── Admin: Manual Auto-DJ controls ──────────────────────────
+    socket.on('admin-start-autodj', (data) => {
+      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const channelId = data?.channelId;
+      if (!channelId) { socket.emit('error', 'channelId required'); return; }
+      if (webrtcService.isChannelLive(channelId)) {
+        socket.emit('error', 'Cannot start Auto-DJ: channel is currently live');
+        return;
+      }
+      startAutoDJ(channelId, io);
+      socket.emit('autodj-control-ack', { started: true, channelId });
+    });
+
+    socket.on('admin-stop-autodj', (data) => {
+      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const channelId = data?.channelId;
+      if (!channelId) { socket.emit('error', 'channelId required'); return; }
+      autoDJService.stop(channelId);
+      io.to(channelId).emit('autodj-stopped', { channelId, reason: 'admin_stopped' });
+      socket.emit('autodj-control-ack', { stopped: true, channelId });
+    });
+
+    socket.on('admin-skip-track', (data) => {
+      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const channelId = data?.channelId;
+      if (!channelId) { socket.emit('error', 'channelId required'); return; }
+      autoDJService.skipTrack(channelId);
+    });
+
+    socket.on('get-autodj-status', (data) => {
+      const channelId = data?.channelId || currentChannelId;
+      if (!channelId) return;
+      socket.emit('autodj-status', {
+        channelId,
+        isRunning: autoDJService.isRunning(channelId),
+        currentTrack: autoDJService.getCurrentTrack(channelId)
+      });
+    });
   });
 
   webrtcService.on('channel-live', async (data) => {
@@ -273,7 +322,6 @@ function setupSocketHandlers(io) {
       console.log(`[WebRTC] Channel ${channelId} status synced to DB: ${isLive}`);
     } catch (e) {
       console.error(`[WebRTC] Failed to sync channel ${channelId} status to DB:`, e.message);
-      // Still emit to socket so listeners know even if DB fails
       io.to(channelId).emit('channel-live', data);
     }
   });
@@ -281,6 +329,30 @@ function setupSocketHandlers(io) {
   webrtcService.on('listener-count-changed', (data) => {
     const { channelId, count } = data;
     io.to(channelId).emit('listener-count', { channelId, count });
+  });
+
+  // ── Auto-DJ helpers ────────────────────────────────────────────
+  function startAutoDJ(channelId, io) {
+    console.log(`[AutoDJ] Activating for channel ${channelId}`);
+    io.to(channelId).emit('autodj-started', { channelId });
+
+    autoDJService.start(
+      channelId,
+      // emitChunk: Send raw PCM to all listeners in the room
+      (chunk) => {
+        io.to(channelId).emit('dj-audio-chunk', chunk);
+      },
+      // emitMeta: Announce track changes
+      (meta) => {
+        io.to(channelId).emit('autodj-track-changed', meta);
+        console.log(`[AutoDJ] Track changed on ${channelId}: "${meta.title}"`);
+      }
+    );
+  }
+
+  // Handle Auto-DJ events
+  autoDJService.on('no-media', ({ channelId }) => {
+    io.to(channelId).emit('autodj-no-media', { channelId });
   });
 }
 

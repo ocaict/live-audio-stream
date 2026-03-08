@@ -737,3 +737,117 @@ function stopVisualizer() {
 
 loadChannels();
 loadRTCConfig();
+
+// =============================================
+// AUTO-DJ LISTENER: PCM Audio Decoder
+// =============================================
+let djAudioCtx = null;
+let djNextStartTime = 0;
+let djIsActive = false;
+
+const DJ_SAMPLE_RATE = 44100;
+const DJ_CHANNELS = 1;
+
+function initDJAudio() {
+  if (!djAudioCtx) {
+    djAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: DJ_SAMPLE_RATE });
+    djNextStartTime = djAudioCtx.currentTime;
+  }
+  if (djAudioCtx.state === 'suspended') {
+    djAudioCtx.resume();
+  }
+}
+
+function scheduleChunk(rawBuffer) {
+  if (!djAudioCtx) return;
+
+  // Convert raw bytes (PCM s16le) -> Float32 samples
+  const int16 = new Int16Array(rawBuffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768.0; // Normalize to [-1, 1]
+  }
+
+  const audioBuffer = djAudioCtx.createBuffer(DJ_CHANNELS, float32.length, DJ_SAMPLE_RATE);
+  audioBuffer.copyToChannel(float32, 0);
+
+  const source = djAudioCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(djAudioCtx.destination);
+
+  // Schedule it gaplessly — no silence between chunks
+  const duration = audioBuffer.duration;
+  const currentTime = djAudioCtx.currentTime;
+  const startAt = Math.max(djNextStartTime, currentTime + 0.05);
+  source.start(startAt);
+  djNextStartTime = startAt + duration;
+}
+
+function stopDJAudio() {
+  if (djAudioCtx) {
+    djAudioCtx.close();
+    djAudioCtx = null;
+    djNextStartTime = 0;
+  }
+  djIsActive = false;
+}
+
+// ── Auto-DJ socket events ──────────────────────────
+socket.on('autodj-started', ({ channelId }) => {
+  if (channelId !== State.channelId) return;
+  console.log('[AutoDJ] Auto-DJ started on this channel');
+  djIsActive = true;
+  initDJAudio();
+  updateStatus('📻 Auto-DJ is live — enjoy the music!', 'live');
+  // Pulse the visualizer ring
+  if (pulseRing) pulseRing.style.display = 'block';
+});
+
+socket.on('dj-audio-chunk', (data) => {
+  if (!djIsActive) return;
+  try {
+    // data arrives as ArrayBuffer or Buffer
+    const buffer = data instanceof ArrayBuffer ? data : data.buffer || data;
+    scheduleChunk(buffer);
+  } catch (e) {
+    console.error('[AutoDJ] Chunk decode error:', e);
+  }
+});
+
+socket.on('autodj-track-changed', (meta) => {
+  if (meta.channelId !== State.channelId) return;
+  console.log(`[AutoDJ] Now playing: "${meta.title}" (${meta.category})`);
+
+  // Update the UI status bar with the current track
+  const nowPlayingEl = document.getElementById('now-playing-bar');
+  if (nowPlayingEl) {
+    const categoryEmoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' };
+    const emoji = categoryEmoji[meta.category] || '🎵';
+    nowPlayingEl.textContent = `${emoji} Now Playing: ${meta.title}`;
+    nowPlayingEl.style.display = 'block';
+  }
+  updateStatus(`📻 Auto-DJ: ${meta.title}`, 'live');
+});
+
+socket.on('autodj-stopped', ({ channelId, reason }) => {
+  if (channelId !== State.channelId) return;
+  console.log('[AutoDJ] Stopped, reason:', reason);
+  stopDJAudio();
+  djIsActive = false;
+
+  const nowPlayingEl = document.getElementById('now-playing-bar');
+  if (nowPlayingEl) nowPlayingEl.style.display = 'none';
+
+  if (reason === 'broadcaster_took_over') {
+    updateStatus('🎙️ Live broadcast resumed', 'live');
+  } else {
+    updateStatus('Auto-DJ ended. Waiting for broadcast...', 'normal');
+    if (pulseRing) pulseRing.style.display = 'none';
+  }
+});
+
+socket.on('autodj-no-media', ({ channelId }) => {
+  if (channelId !== State.channelId) return;
+  updateStatus('No media in library. Upload tracks to start Auto-DJ.', 'offline');
+});
+

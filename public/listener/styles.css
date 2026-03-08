@@ -601,3 +601,36 @@ footer {
     font-size: 1.25rem;
   }
 }
+
+/* =============================================
+   AUTO-DJ: Now Playing Bar
+   ============================================= */
+.now-playing-bar {
+  display: none;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fbbf24;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 0.5rem;
+  animation: nowPlayingPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes nowPlayingPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+  }
+}

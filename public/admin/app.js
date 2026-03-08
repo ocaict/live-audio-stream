@@ -1322,3 +1322,68 @@ if (uploadMediaForm) {
     }
   });
 }
+
+// =============================================
+// PHASE 7 — AUTO-DJ ADMIN CONTROLS
+// =============================================
+const autoDJStartBtn = document.getElementById('autodj-start-btn');
+const autoDJStopBtn  = document.getElementById('autodj-stop-btn');
+const autoDJSkipBtn  = document.getElementById('autodj-skip-btn');
+const autoDJStatusBadge = document.getElementById('autodj-status-badge');
+const autoDJNowPlaying  = document.getElementById('autodj-now-playing');
+const autoDJTrackTitle  = document.getElementById('autodj-track-title');
+
+function setAutoDJState(running) {
+  if (autoDJStartBtn) autoDJStartBtn.disabled = running;
+  if (running) {
+    autoDJStatusBadge.textContent = '� Live';
+    autoDJStatusBadge.style.cssText = 'background:rgba(0,242,234,0.15);color:#00f2ea;border:1px solid rgba(0,242,234,0.4);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:500;white-space:nowrap;';
+  } else {
+    autoDJStatusBadge.textContent = '● Offline';
+    autoDJStatusBadge.style.cssText = 'background:rgba(255,45,85,0.15);color:#ff2d55;border:1px solid rgba(255,45,85,0.3);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:500;white-space:nowrap;';
+    if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'none';
+  }
+}
+
+if (autoDJStartBtn) {
+  autoDJStartBtn.addEventListener('click', () => {
+    socket.emit('admin-start-autodj', { channelId: selectedChannelId });
+  });
+}
+if (autoDJStopBtn) {
+  autoDJStopBtn.addEventListener('click', () => {
+    socket.emit('admin-stop-autodj', { channelId: selectedChannelId });
+  });
+}
+if (autoDJSkipBtn) {
+  autoDJSkipBtn.addEventListener('click', () => {
+    socket.emit('admin-skip-track', { channelId: selectedChannelId });
+  });
+}
+
+socket.on('autodj-started', ({ channelId }) => {
+  if (channelId !== selectedChannelId) return;
+  setAutoDJState(true);
+});
+
+socket.on('autodj-stopped', ({ channelId }) => {
+  if (channelId !== selectedChannelId) return;
+  setAutoDJState(false);
+});
+
+socket.on('autodj-track-changed', (meta) => {
+  if (meta.channelId !== selectedChannelId) return;
+  const emoji = { music: '�', show: '�️', jingle: '✨', ad: '�️' }[meta.category] || '�';
+  if (autoDJTrackTitle) autoDJTrackTitle.textContent = emoji + ' ' + meta.title + ' (' + meta.index + '/' + meta.total + ')';
+  if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
+});
+
+socket.on('autodj-control-ack', (data) => {
+  console.log('[AutoDJ] Control ack:', data);
+});
+
+socket.on('autodj-no-media', ({ channelId }) => {
+  if (channelId !== selectedChannelId) return;
+  alert('No media in the library for this station. Upload tracks first.');
+  setAutoDJState(false);
+});

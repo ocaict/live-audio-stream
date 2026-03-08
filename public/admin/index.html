@@ -300,6 +300,35 @@
           </div>
         </section>
 
+        <!-- Auto-DJ Control Panel -->
+        <section class="section-card glass-card">
+          <div class="section-header">
+            <h2><i data-lucide="radio"></i> Auto-DJ Control</h2>
+            <div id="autodj-status-badge" class="status-msg small"
+              style="background:rgba(255,45,85,0.15);color:#ff2d55;border:1px solid rgba(255,45,85,0.3);">● Offline
+            </div>
+          </div>
+          <div id="autodj-now-playing" class="status-banner" style="display:none; border-left-color: #fbbf24;">
+            <span id="autodj-track-title">—</span>
+          </div>
+          <div class="control-actions" style="margin-top: 1rem;">
+            <button id="autodj-start-btn" class="btn primary large-btn">
+              <i data-lucide="play-circle"></i>
+              <span>Start Auto-DJ</span>
+            </button>
+            <button id="autodj-skip-btn" class="btn secondary large-btn" disabled>
+              <i data-lucide="skip-forward"></i>
+              <span>Skip Track</span>
+            </button>
+            <button id="autodj-stop-btn" class="btn danger large-btn" disabled>
+              <i data-lucide="circle-stop"></i>
+              <span>Stop</span>
+            </button>
+          </div>
+          <p class="rec-meta" style="margin-top:0.75rem; font-size:0.78rem;">Auto-DJ streams from your Media Library
+            when you are offline. It stops the moment you go live.</p>
+        </section>
+
         <!-- Media Library (Auto-DJ) -->
         <section class="section-card glass-card recordings-container">
           <div class="section-header">
@@ -326,6 +355,7 @@
         </section>
       </div>
     </main>
+
 
     <!-- Upload Media Modal -->
     <div id="upload-media-modal" class="modal hidden">

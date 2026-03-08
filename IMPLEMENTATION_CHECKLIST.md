@@ -60,3 +60,8 @@
 *   [ ] **Dynamic Metadata Sync**: Listener UI transitions fluidly from "LIVE" to "NOW PLAYING: [Title]" via Socket.IO, keeping the live chat room engaged during replays.
 
 ---
+Which step would you like to tackle next?
+
+🚀 Build the Auto-DJ playout engine (FFmpeg → WebRTC streaming when broadcaster is offline)
+🎛️ Build the Queue/Rotation UI (define playback logic for the auto-DJ)
+🎨 Polish the current Media Library UI first (drag-to-reorder, preview player, etc.)
