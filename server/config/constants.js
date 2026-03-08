@@ -24,6 +24,14 @@ const CONFIG = {
   API_ONLY: process.env.API_ONLY === 'true',
   FRONTEND_URL: process.env.FRONTEND_URL || '',
 
+  // WebRTC Configuration
+  ICE_SERVERS: process.env.ICE_SERVERS ? JSON.parse(process.env.ICE_SERVERS) : [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  ],
+
   // Cloudinary Configuration
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
@@ -54,7 +62,10 @@ CONFIG.validate = () => {
       console.warn('[SECURITY] JWT_SECRET is using the default value. Change it immediately!');
     }
     if (CONFIG.ADMIN_USERNAME === 'admin' && CONFIG.ADMIN_PASSWORD === 'admin123') {
-      console.warn('[SECURITY] Using default admin credentials (admin/admin123) in production. This is highly discouraged!');
+      console.warn('[SECURITY] Using default admin credentials (admin/admin123). This is highly discouraged!');
+    }
+    if (CONFIG.CORS_ORIGIN === '*') {
+      console.warn('[SECURITY] CORS_ORIGIN is set to "*". In production, this should be restricted to your specific domain.');
     }
   }
 

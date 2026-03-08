@@ -40,14 +40,24 @@ const logoutBtn = document.getElementById('logout-btn');
 const listenerCountEl = document.getElementById('listener-count');
 const recordingsList = document.getElementById('recordings-list');
 
-const rtcConfig = {
+let rtcConfig = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'stun:stun.l.google.com:19302' }
   ]
 };
+
+async function loadRTCConfig() {
+  try {
+    const res = await apiFetch('/api/status/rtc-config');
+    const data = await res.json();
+    if (res.ok && data.iceServers) {
+      rtcConfig = data;
+      console.log('[RTC] ICE Servers loaded from server');
+    }
+  } catch (e) {
+    console.error('[RTC] Failed to load config, using fallback:', e);
+  }
+}
 
 // Audio Constraints Preferences
 const audioPrefs = {
@@ -175,6 +185,7 @@ async function checkAuth() {
     const data = await res.json();
     if (data.authenticated) {
       showDashboard();
+      await loadRTCConfig();
       loadMyChannels();
     } else {
       showLogin();

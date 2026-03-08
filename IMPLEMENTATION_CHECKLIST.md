@@ -26,12 +26,12 @@
 
 ## 🚀 ACTIVE ROADMAP (Next Steps)
 
-### 🔵 Phase 3: Infrastructure & Production Readiness (IN PROGRESS 🏗️)
+### 🔵 Phase 3: Infrastructure & Production Readiness
 *   [x] **Broadcaster Auto-Resume**: Implemented a 15-second grace period on the server! Broadcasters can now refresh their dashboard or recover from minor network drops without the station going 'Offline' or losing recording progress.
-*   [ ] **TURN Server Configuration**: Integrate STUN/TURN (Twilio/Metered) for 100% WebRTC reliability behind firewalls.
-*   [ ] **Request Logging**: Integrate `morgan` for server-side audit trails and debugging.
-*   [ ] **CORS Hardening**: Restrict `CORS_ORIGIN` in production instead of using a wildcard.
-*   [ ] **Buffered Playback**: Improve listener buffering to handle minor network jitter/latencies.
+*   [x] **TURN Server Configuration**: Managed via backend `CONFIG`. Frontend now fetches ICE servers dynamically, ensuring credentials aren't hardcoded.
+*   [x] **Request Logging**: Integrated `morgan` for server-side audit trails and debugging.
+*   [x] **CORS Hardening**: Added security validation to ensure restricted origins in production.
+*   [x] **Buffered Playback**: Added a 500ms `playoutDelayHint` to listener streams, significantly improving audio stability under network jitter.
 
 ### 🟢 Phase 4: Multi-User System
 *   [ ] **User Accounts**: Registration and Login system for multiple broadcasters (non-admins).

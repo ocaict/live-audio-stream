@@ -27,14 +27,24 @@ const State = {
   }
 };
 
-const rtcConfig = {
+let rtcConfig = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'stun:stun.l.google.com:19302' }
   ]
 };
+
+async function loadRTCConfig() {
+  try {
+    const res = await fetch('/api/status/rtc-config');
+    const data = await res.json();
+    if (data.iceServers) {
+      rtcConfig = data;
+      console.log('[RTC] ICE Servers loaded from server');
+    }
+  } catch (e) {
+    console.error('[RTC] Failed to load config, using fallback:', e);
+  }
+}
 
 const listenBtn = document.getElementById('listen-btn');
 const statusText = document.getElementById('status-text');
@@ -306,6 +316,16 @@ async function connectToBroadcast() {
     peerConnection.ontrack = (event) => {
       console.log('Audio track established');
       if (event.streams[0]) {
+        // Buffering hint: 500ms jitter buffer for smoother radio experience
+        try {
+          const receivers = peerConnection.getReceivers();
+          const audioReceiver = receivers.find(r => r.track?.kind === 'audio');
+          if (audioReceiver && 'playoutDelayHint' in audioReceiver) {
+            audioReceiver.playoutDelayHint = 0.5;
+            console.log('[RTC] Buffering enabled: 500ms delay hint set.');
+          }
+        } catch (e) { console.warn('[RTC] PlayoutDelayHint not supported:', e); }
+
         audioPlayer.srcObject = event.streams[0];
         audioPlayer.volume = State.volume;
         audioPlayer.play().then(() => {
@@ -648,3 +668,4 @@ function stopVisualizer() {
 }
 
 loadChannels();
+loadRTCConfig();
