@@ -38,7 +38,7 @@
 *   [x] **Channel Ownership**: Channels are now private to their creators. Broadcasters only see and manage their own stations.
 *   [x] **Auth Middleware Update**: Restricted sensitive actions (Edit, Delete, Upload) to resource owners via `requireChannelOwnership` and `requireRecordingOwnership`.
 
-### � Phase 5: Performance & UX (NEXT UP 🚀)
+### 🟣 Phase 5: Performance & UX (COMPLETED)
 *   [x] **Recording Metadata & Management**: Added Title, Description, and Tags to recordings with a built-in Search and Edit system.
 *   [x] **Live Visuals & UX**: Integrated a high-resolution, premium real-time audio meter for professional broadcaster feedback.
 *   [x] **Social Embeds**: Developed a lightweight, modern iframe player and sharing system for external platform integration.
@@ -52,6 +52,11 @@
 *   [ ] **TypeScript Migration**: Full codebase migration for long-term type safety.
 *   [ ] **Testing**: Implement Jest for core services and API unit testing.
 
+### 📻 Phase 7: Auto-DJ & 24/7 Playout System (Future)
+*   [ ] **Synchronous Server Streaming**: Transition from VOD downloads to a real-time Auto-DJ backend that streams recorded `.mp3` chunks via FFmpeg to WebRTC when a broadcaster goes offline.
+*   [ ] **Audio Crossfading**: Eliminate "dead air" with overlapping 3-second audio transitions between recordings, ensuring a high-energy flow.
+*   [ ] **Jingles & Station Sweepers**: Automatic injection of short, branded audio clips between shows to maintain an actively managed station feel.
+*   [ ] **Playlist Scheduling**: Visual Drag-and-Drop timeline in the Admin Dashboard for queueing daily automated playback.
+*   [ ] **Dynamic Metadata Sync**: Listener UI transitions fluidly from "LIVE" to "NOW PLAYING: [Title]" via Socket.IO, keeping the live chat room engaged during replays.
+
 ---
-
-
