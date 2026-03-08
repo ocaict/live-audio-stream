@@ -52,10 +52,13 @@ async function deleteAudio(publicId) {
   }
 
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.destroy(publicId, { resource_type: 'raw' }, (error, result) => {
+    // Audio files are usually 'video' resource type in Cloudinary
+    cloudinary.uploader.destroy(publicId, { resource_type: 'video' }, (error, result) => {
       if (error) {
+        console.error('Cloudinary destroy error:', error);
         reject(error);
       } else {
+        console.log('Cloudinary destroy result:', result);
         resolve(result);
       }
     });

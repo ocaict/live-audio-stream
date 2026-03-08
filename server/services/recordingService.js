@@ -133,12 +133,11 @@ class RecordingService {
 
       await RecordingModel.create(recording);
 
-      // Cleanup
+      // Cleanup local files
       ffmpegService.deleteFile(tempPath);
-
-      // If we have a cloud URL, we could theoretically delete the local MP3, 
-      // but let's keep it for now as a local cache/fallback unless storage is an issue.
-      // On Render free tier, it will be deleted anyway on restart.
+      if (cloudUrl && fs.existsSync(mp3Path)) {
+        ffmpegService.deleteFile(mp3Path);
+      }
 
       console.log('Recording finalized and saved:', cloudUrl || mp3Path);
       return recording;
