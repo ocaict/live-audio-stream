@@ -21,25 +21,17 @@ const AuthService = {
   },
 
   async login(username, password) {
-    console.log(`[AUTH] Login attempt for: "${username}"`);
-
     // Try user table first
     const user = await UserModel.findByUsername(username);
 
     if (!user) {
-      console.warn(`[AUTH] User NOT found in database: "${username}"`);
       throw new Error('Invalid credentials');
     }
-
-    console.log(`[AUTH] User found: ${user.username} (Role: ${user.role || 'broadcaster'})`);
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      console.warn(`[AUTH] Password mismatch for user: "${username}"`);
       throw new Error('Invalid credentials');
     }
-
-    console.log(`[AUTH] Login successful for: ${user.username}`);
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role || 'broadcaster' },
