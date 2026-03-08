@@ -299,8 +299,72 @@
             </div>
           </div>
         </section>
+
+        <!-- Media Library (Auto-DJ) -->
+        <section class="section-card glass-card recordings-container">
+          <div class="section-header">
+            <h2><i data-lucide="folder-music"></i> Auto-DJ Media Library</h2>
+            <div class="header-actions">
+              <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="media-search" placeholder="Search media...">
+              </div>
+              <button id="upload-media-btn" class="btn primary-small">
+                <i data-lucide="upload"></i> Upload
+              </button>
+              <button id="refresh-media-btn" class="btn-small icon-btn-ghost">
+                <i data-lucide="refresh-cw"></i>
+              </button>
+            </div>
+          </div>
+          <div id="media-list" class="recordings-list">
+            <div class="empty-state">
+              <i data-lucide="audio-lines"></i>
+              <p>No custom media uploaded yet.</p>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
+
+    <!-- Upload Media Modal -->
+    <div id="upload-media-modal" class="modal hidden">
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h2><i data-lucide="upload-cloud"></i> Upload Custom Audio</h2>
+          <button id="close-upload-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <form id="upload-media-form">
+            <div class="field">
+              <label>Audio File (.mp3, .wav)</label>
+              <input type="file" id="media-file-input" accept="audio/*" required>
+            </div>
+            <div class="field">
+              <label>Title</label>
+              <input type="text" id="media-title" placeholder="Professional Name" required>
+            </div>
+            <div class="field">
+              <label>Category</label>
+              <select id="media-category" required class="custom-select-small">
+                <option value="music">🎵 Music Track</option>
+                <option value="show">🎙️ Pre-recorded Show</option>
+                <option value="jingle">✨ Jingle / Sweeper</option>
+                <option value="ad">🗣️ Ad / Commercial</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tags (comma separated)</label>
+              <input type="text" id="media-tags" placeholder="pop, morning-show, intro">
+            </div>
+            <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="submit" id="submit-media-btn" class="btn primary-small">Upload File</button>
+            </div>
+            <p id="upload-media-status" class="status-msg" style="margin-top: 1rem;"></p>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <footer class="main-footer">
       <p>OcaTech-Live Broadcaster Studio • Control Center v2.0</p>

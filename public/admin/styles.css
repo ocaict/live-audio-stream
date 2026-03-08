@@ -1145,3 +1145,87 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* =============================================
+   PHASE 7 — MEDIA LIBRARY STYLES
+   ============================================= */
+
+.media-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.rec-header .rec-title {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.rec-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rec-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 0.2rem;
+}
+
+.custom-select-small {
+  width: 100%;
+  padding: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.custom-select-small option {
+  background: var(--bg-dark);
+}
+
+#media-file-input {
+  width: 100%;
+  padding: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+#media-file-input::file-selector-button {
+  background: linear-gradient(135deg, var(--primary), #ff7eb3);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 12px;
+  transition: opacity 0.2s;
+}
+
+#media-file-input::file-selector-button:hover {
+  opacity: 0.85;
+}

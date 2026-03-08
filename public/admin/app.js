@@ -52,6 +52,21 @@ const editRecordingDescription = document.getElementById('edit-recording-descrip
 const editRecordingTags = document.getElementById('edit-recording-tags');
 
 let allRecordings = [];
+let allMedia = [];
+
+// Media Library DOM refs
+const mediaList = document.getElementById('media-list');
+const uploadMediaBtn = document.getElementById('upload-media-btn');
+const refreshMediaBtn = document.getElementById('refresh-media-btn');
+const mediaSearch = document.getElementById('media-search');
+const uploadMediaModal = document.getElementById('upload-media-modal');
+const closeUploadModal = document.getElementById('close-upload-modal');
+const uploadMediaForm = document.getElementById('upload-media-form');
+const mediaFileInput = document.getElementById('media-file-input');
+const mediaTitleInput = document.getElementById('media-title');
+const mediaCategorySelect = document.getElementById('media-category');
+const mediaTagsInput = document.getElementById('media-tags');
+const uploadMediaStatus = document.getElementById('upload-media-status');
 const broadcastStatus = document.getElementById('broadcast-status');
 const liveIndicator = document.getElementById('live-indicator');
 const recordingIdEl = document.getElementById('recording-id');
@@ -460,6 +475,7 @@ channelSelect.addEventListener('change', () => {
   resetChart();
   initChart();
   startAnalyticsRefresh();
+  loadMedia();
 });
 
 shareChannelBtn.addEventListener('click', () => {
@@ -1146,3 +1162,163 @@ socket.io.on('reconnect', (attempt) => {
 socket.on('error', m => alert(m));
 
 checkAuth();
+
+// =============================================
+// PHASE 7 — MEDIA LIBRARY LOGIC
+// =============================================
+
+const CATEGORY_META = {
+  music: { label: '🎵 Music', color: 'var(--primary)' },
+  show: { label: '🎙️ Show', color: '#a78bfa' },
+  jingle: { label: '✨ Jingle', color: '#fbbf24' },
+  ad: { label: '🗣️ Ad', color: '#34d399' }
+};
+
+async function loadMedia() {
+  if (!selectedChannelId) return;
+  try {
+    const res = await apiFetch(`/api/media?channelId=${selectedChannelId}`);
+    const data = await res.json();
+    allMedia = Array.isArray(data) ? data : [];
+    renderMedia(allMedia);
+  } catch (e) {
+    console.error('Failed to load media library:', e);
+    allMedia = [];
+    renderMedia([]);
+  }
+}
+
+function renderMedia(items) {
+  if (!mediaList) return;
+  if (!items.length) {
+    mediaList.innerHTML = `
+      <div class="empty-state">
+        <i data-lucide="audio-lines"></i>
+        <p>No custom media uploaded yet. Click <b>Upload</b> to get started.</p>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  mediaList.innerHTML = items.map(item => {
+    const meta = CATEGORY_META[item.category] || { label: item.category, color: '#94a3b8' };
+    const date = new Date(item.created_at).toLocaleDateString();
+    return `
+      <div class="recording-item" data-id="${item.id}">
+        <div class="rec-info">
+          <div class="rec-header">
+            <span class="rec-title" title="${item.title}">${item.title}</span>
+            <span class="media-badge" style="background:${meta.color}22;color:${meta.color};border:1px solid ${meta.color}55">${meta.label}</span>
+          </div>
+          <div class="rec-meta">
+            <span>${date}</span>
+            ${item.tags && item.tags.length ? `<span>• ${item.tags.slice(0, 3).join(', ')}</span>` : ''}
+          </div>
+        </div>
+        <div class="rec-actions">
+          ${item.cloud_url ? `<a href="${item.cloud_url}" target="_blank" class="btn-icon play" title="Preview"><i data-lucide="play-circle"></i></a>` : ''}
+          <button class="btn-icon delete" title="Delete" onclick="deleteMedia('${item.id}')"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+async function deleteMedia(id) {
+  if (!confirm('Delete this media file? This cannot be undone.')) return;
+  try {
+    const res = await apiFetch(`/api/media/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      allMedia = allMedia.filter(m => m.id !== id);
+      renderMedia(allMedia);
+    } else {
+      const d = await res.json();
+      alert(d.error || 'Delete failed');
+    }
+  } catch (e) {
+    console.error('Delete media error:', e);
+  }
+}
+
+if (mediaSearch) {
+  mediaSearch.addEventListener('input', () => {
+    const q = mediaSearch.value.toLowerCase();
+    renderMedia(allMedia.filter(m =>
+      m.title.toLowerCase().includes(q) ||
+      m.category.toLowerCase().includes(q) ||
+      (m.tags || []).some(t => t.toLowerCase().includes(q))
+    ));
+  });
+}
+
+if (uploadMediaBtn) {
+  uploadMediaBtn.addEventListener('click', () => {
+    if (!selectedChannelId) { alert('Please select a station first.'); return; }
+    uploadMediaModal.classList.remove('hidden');
+  });
+}
+
+if (closeUploadModal) {
+  closeUploadModal.addEventListener('click', () => {
+    uploadMediaModal.classList.add('hidden');
+    uploadMediaForm.reset();
+    uploadMediaStatus.textContent = '';
+  });
+}
+
+if (refreshMediaBtn) {
+  refreshMediaBtn.addEventListener('click', loadMedia);
+}
+
+if (uploadMediaForm) {
+  uploadMediaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedChannelId) return;
+
+    const file = mediaFileInput.files[0];
+    if (!file) return;
+
+    uploadMediaStatus.textContent = '⏳ Uploading...';
+    const submitBtn = document.getElementById('submit-media-btn');
+    submitBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('mediaFile', file);
+    formData.append('channelId', selectedChannelId);
+    formData.append('title', mediaTitleInput.value.trim() || file.name);
+    formData.append('category', mediaCategorySelect.value);
+    formData.append('tags', mediaTagsInput.value);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`${API_URL}/api/media/upload`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        uploadMediaStatus.textContent = '✅ Upload successful!';
+        uploadMediaStatus.style.color = 'var(--success)';
+        uploadMediaForm.reset();
+        await loadMedia();
+        setTimeout(() => {
+          uploadMediaModal.classList.add('hidden');
+          uploadMediaStatus.textContent = '';
+        }, 1500);
+      } else {
+        uploadMediaStatus.textContent = `❌ ${data.error || 'Upload failed'}`;
+        uploadMediaStatus.style.color = 'var(--danger)';
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      uploadMediaStatus.textContent = '❌ Network error during upload';
+      uploadMediaStatus.style.color = 'var(--danger)';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
