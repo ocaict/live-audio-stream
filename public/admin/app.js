@@ -176,6 +176,10 @@ function initChart() {
   const ctx = document.getElementById('listener-trend-chart');
   if (!ctx) return;
 
+  if (trendChart) {
+    trendChart.destroy();
+  }
+
   trendChart = new Chart(ctx, {
     type: 'line',
     data: {
