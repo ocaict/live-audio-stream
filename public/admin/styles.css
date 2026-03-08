@@ -375,6 +375,38 @@ body {
   color: white;
 }
 
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.btn-icon.play:hover {
+  color: var(--success);
+}
+
+.btn-icon.delete:hover {
+  color: var(--danger);
+}
+
+.btn-icon.edit:hover {
+  color: var(--primary);
+}
+
 .large-btn {
   flex: 1;
   padding: 16px;
@@ -399,6 +431,16 @@ body {
   color: var(--text-dim);
   margin-bottom: 1.5rem;
   border-left: 3px solid var(--primary);
+}
+
+.status-msg.small {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .control-actions {
@@ -431,6 +473,7 @@ body {
 
 .recording-info {
   flex: 1;
+  min-width: 0;
 }
 
 .filename {
@@ -740,6 +783,26 @@ body {
   background: rgba(255, 255, 255, 0.08);
 }
 
+#send-chat-btn {
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 15px var(--primary-glow);
+  transition: all 0.2s ease;
+}
+
+#send-chat-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+
 @keyframes messageSlide {
   from {
     opacity: 0;
@@ -983,12 +1046,18 @@ body {
   font-size: 1.05rem;
   color: var(--text-main);
   margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rec-filename {
   font-size: 0.8rem;
   color: var(--text-dim);
   font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rec-tags {
