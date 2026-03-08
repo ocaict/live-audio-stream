@@ -46,6 +46,33 @@ const rtcConfig = {
   ]
 };
 
+// Audio Constraints Preferences
+const audioPrefs = {
+  echoCancellation: localStorage.getItem('pref_echo') !== 'false',
+  noiseSuppression: localStorage.getItem('pref_noise') !== 'false',
+  autoGainControl: localStorage.getItem('pref_gain') !== 'false'
+};
+
+const echoCheck = document.getElementById('echo-cancel');
+const noiseCheck = document.getElementById('noise-suppress');
+const gainCheck = document.getElementById('auto-gain');
+
+function setupPrefs() {
+  if (echoCheck) {
+    echoCheck.checked = audioPrefs.echoCancellation;
+    echoCheck.onchange = (e) => localStorage.setItem('pref_echo', e.target.checked);
+  }
+  if (noiseCheck) {
+    noiseCheck.checked = audioPrefs.noiseSuppression;
+    noiseCheck.onchange = (e) => localStorage.setItem('pref_noise', e.target.checked);
+  }
+  if (gainCheck) {
+    gainCheck.checked = audioPrefs.autoGainControl;
+    gainCheck.onchange = (e) => localStorage.setItem('pref_gain', e.target.checked);
+  }
+}
+setupPrefs();
+
 let audioContext = null;
 let mediaStreamDestination = null;
 let mediaRecorder = null;
@@ -266,26 +293,24 @@ startBroadcastBtn.addEventListener('click', async () => {
   }
 
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    console.log('Got stream');
+    const constraints = {
+      audio: {
+        echoCancellation: echoCheck ? echoCheck.checked : true,
+        noiseSuppression: noiseCheck ? noiseCheck.checked : true,
+        autoGainControl: gainCheck ? gainCheck.checked : true,
+        sampleRate: 44100,
+        channelCount: 2
+      },
+      video: false
+    };
+
+    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log('Got stream with constraints:', constraints.audio);
 
     audioContext = new AudioContext({ sampleRate: 44100 });
     const source = audioContext.createMediaStreamSource(mediaStream);
     mediaStreamDestination = audioContext.createMediaStreamDestination();
     source.connect(mediaStreamDestination);
-
-    const mediaRecorder = new MediaRecorder(mediaStreamDestination.stream, { mimeType: 'audio/webm;codecs=opus' });
-    recordedBuffers = [];
-
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (e) => {
-      if (isRecording) {
-        const data = e.inputBuffer.getChannelData(0);
-        recordedBuffers.push(new Float32Array(data));
-      }
-    };
-    source.connect(processor);
-    processor.connect(audioContext.destination);
 
     if (!socket.connected) {
       broadcastStatus.textContent = 'Socket not connected. Please refresh.';

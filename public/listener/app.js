@@ -9,6 +9,7 @@ let latestRecordingUrl = null;
 const State = {
   intent: localStorage.getItem('isListeningIntent') === 'true',
   channelId: localStorage.getItem('lastChannelId'),
+  volume: parseFloat(localStorage.getItem('userVolume') || '0.8'),
   isStreaming: false,
   isReconnecting: false,
   channels: [],
@@ -17,6 +18,7 @@ const State = {
     this[key] = value;
     if (key === 'intent') localStorage.setItem('isListeningIntent', value);
     if (key === 'channelId') localStorage.setItem('lastChannelId', value);
+    if (key === 'volume') localStorage.setItem('userVolume', value);
     console.log(`[State Change] ${key} ->`, value);
     refreshUI();
   }
@@ -38,11 +40,58 @@ const liveIndicator = document.getElementById('live-indicator');
 const audioPlayer = document.getElementById('audio-player');
 const pulseRing = document.querySelector('.pulse-ring');
 const channelSelect = document.getElementById('channel-select');
+const volumeSlider = document.getElementById('volume-slider');
+const volumeIcon = document.getElementById('volume-icon');
+
+// Initialize volume
+if (volumeSlider) {
+  volumeSlider.value = State.volume;
+}
+if (audioPlayer) {
+  audioPlayer.volume = State.volume;
+}
 
 function updateStatus(message, type = 'normal') {
   console.log(`[Status] ${message} (${type})`);
   statusText.textContent = message;
   statusText.dataset.type = type;
+}
+
+if (volumeSlider) {
+  volumeSlider.addEventListener('input', (e) => {
+    const vol = parseFloat(e.target.value);
+    State.commit('volume', vol);
+    if (audioPlayer) {
+      audioPlayer.volume = vol;
+      audioPlayer.muted = false;
+    }
+    updateVolumeIcon(vol);
+  });
+}
+
+if (volumeIcon) {
+  volumeIcon.addEventListener('click', () => {
+    if (audioPlayer.muted) {
+      audioPlayer.muted = false;
+      volumeSlider.value = State.volume;
+      updateVolumeIcon(State.volume);
+    } else {
+      audioPlayer.muted = true;
+      volumeSlider.value = 0;
+      updateVolumeIcon(0);
+    }
+  });
+}
+
+function updateVolumeIcon(vol) {
+  if (vol === 0 || audioPlayer.muted) {
+    volumeIcon.setAttribute('data-lucide', 'volume-x');
+  } else if (vol < 0.5) {
+    volumeIcon.setAttribute('data-lucide', 'volume-1');
+  } else {
+    volumeIcon.setAttribute('data-lucide', 'volume-2');
+  }
+  lucide.createIcons();
 }
 
 function refreshUI() {

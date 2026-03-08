@@ -27,10 +27,10 @@ This checklist outlines the recommended improvements for the Radio Live Stream a
 *   [x] **Map-based State**: Refactored `RecordingService.js` to use a `Map<channelId, recordingContext>` for total isolation.
 *   [x] **Isolated Handlers**: Socket events now route audio chunks to the specific channel's stream.
 
-### 5. Web Audio API & Listener UX
+### 5. Web Audio API & Listener UX (COMPLETED ✅)
 *   [x] **Premium UI**: Implemented high-fidelity "Glassmorphism" for both Listener and Admin.
 *   [x] **Live Visualizer**: Integrated real-time audio visualization using Web Audio API.
-*   [ ] **Volume Persistence**: Save the listener's volume preference in `localStorage`.
+*   [x] **Volume Persistence**: Listeners' volume preference is now saved in `localStorage`.
 *   [ ] **Buffered Playback**: Improve listener buffer management to handle minor network jitter.
 
 ### 6. Environment & Startup Validation
@@ -40,10 +40,10 @@ This checklist outlines the recommended improvements for the Radio Live Stream a
 
 ## 🔵 Phase 2: User Experience & Analytics (Enhancement)
 
-### 7. Admin Dashboard Polish
+### 7. Admin Dashboard Polish (COMPLETED ✅)
+*   [x] **Station Management**: Admins can now create and manage stations from the new UI.
+*   [x] **Audio Quality Settings**: Added toggles for Echo Cancellation, Noise Suppression, and Auto Gain Control for professional broadcasting.
 *   [ ] **Real-time Stats**: Add a simple time-series chart for listener counts.
-*   [ ] **Audio Quality Toggle**: Add UI switches for Echo Cancellation, Noise Suppression, and Auto Gain Control.
-*   [x] **Station Management**: Admins can now create and manage multiple channels from the new UI.
 
 ### 8. Listener UX Improvements
 *   [x] **Automatic Reconnection**: Listeners now sync automatically when a broadcast status changes.

@@ -304,6 +304,53 @@ main {
   box-shadow: 0 10px 30px var(--success-glow);
 }
 
+/* Volume Control */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 16px;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--glass-border);
+}
+
+#volume-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+#volume-icon:hover {
+  color: white;
+}
+
+#volume-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+#volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--primary-glow);
+  transition: transform 0.2s;
+}
+
+#volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
 .btn-icon {
   width: 24px;
   height: 24px;
