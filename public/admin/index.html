@@ -1,101 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Radio Admin - Live Broadcast</title>
+  <title>OcaTech-Live | Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="/admin/styles.css">
-  <!-- Configure your server URL here -->
   <script>
-    window.SERVER_URL = ''; // Leave empty for same origin, or set to 'https://your-server.com'
-    window.API_URL = '';    // Leave empty for same origin, or set to 'https://your-server.com'
+    window.SERVER_URL = '';
+    window.API_URL = '';
   </script>
 </head>
+
 <body>
-  <div id="loading-screen" class="screen">
-    <div class="loader-box">
+  <div class="bg-glow"></div>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="screen full-screen">
+    <div class="loader-box glass-card">
       <div class="spinner"></div>
-      <p>Checking authentication...</p>
+      <p>Authenticating...</p>
     </div>
   </div>
 
-  <div id="login-screen" class="screen hidden">
-    <div class="login-box">
-      <h1>Radio Admin</h1>
-      <form id="login-form">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-      </form>
-      <p id="login-error" class="error"></p>
+  <!-- Login Screen -->
+  <div id="login-screen" class="screen full-screen hidden">
+    <div class="login-wrapper">
+      <div class="login-box glass-card">
+        <div class="logo">
+          <i data-lucide="radio" class="logo-icon"></i>
+          <span>OcaTech-Live</span>
+        </div>
+        <h1>Broadcaster Admin</h1>
+        <p class="subtitle">Enter your credentials to manage the stream</p>
+
+        <form id="login-form">
+          <div class="input-group">
+            <i data-lucide="user"></i>
+            <input type="text" id="username" placeholder="Username" required>
+          </div>
+          <div class="input-group">
+            <i data-lucide="lock"></i>
+            <input type="password" id="password" placeholder="Password" required>
+          </div>
+          <button type="submit" class="btn primary full-width">
+            <span>Login</span>
+            <i data-lucide="log-in"></i>
+          </button>
+        </form>
+        <p id="login-error" class="error-text"></p>
+      </div>
     </div>
   </div>
 
-  <div id="dashboard-screen" class="screen hidden">
-    <header>
-      <h1>Radio Admin</h1>
-      <div class="header-right">
-        <span id="live-indicator" class="indicator offline">● Offline</span>
-        <span id="listener-count">Listeners: 0</span>
-        <button id="logout-btn">Logout</button>
+  <!-- Dashboard Screen -->
+  <div id="dashboard-screen" class="screen dashboard hidden">
+    <header class="main-header">
+      <div class="container flex-row">
+        <div class="logo">
+          <i data-lucide="radio" class="logo-icon"></i>
+          <span>OcaTech-Live</span>
+        </div>
+        <div class="header-right">
+          <div id="live-indicator" class="indicator offline">
+            <span class="dot"></span>
+            <span class="status-label">Offline</span>
+          </div>
+          <span id="listener-count" class="meta-badge"><i data-lucide="users"></i> 0</span>
+          <button id="logout-btn" class="btn icon-btn" title="Logout">
+            <i data-lucide="log-out"></i>
+          </button>
+        </div>
       </div>
     </header>
 
-    <main>
-      <section class="channel-section">
-        <h2>My Channels</h2>
-        <div class="channel-selector">
-          <select id="channel-select">
-            <option value="">Select a channel...</option>
-          </select>
-          <button id="create-channel-btn" class="btn secondary">+ New Channel</button>
+    <main class="container grid-layout">
+      <!-- Left Sidebar: Channels -->
+      <aside class="sidebar section-card glass-card">
+        <div class="section-header">
+          <h2><i data-lucide="layers"></i> Stations</h2>
+          <button id="create-channel-btn" class="btn-small action-btn" title="Create Station">
+            <i data-lucide="plus"></i>
+          </button>
         </div>
-        <div id="channel-form" class="channel-form hidden">
-          <input type="text" id="channel-name" placeholder="Channel Name" required>
-          <input type="text" id="channel-description" placeholder="Description (optional)">
-          <input type="color" id="channel-color" value="#e94560">
-          <div class="form-actions">
-            <button id="save-channel-btn" class="btn primary">Save</button>
-            <button id="cancel-channel-btn" class="btn secondary">Cancel</button>
+
+        <div class="channel-selector-area">
+          <div class="custom-select">
+            <select id="channel-select">
+              <option value="">Select Station...</option>
+            </select>
           </div>
         </div>
-        <p id="channel-status" class="status"></p>
-      </section>
 
-      <section class="broadcast-section">
-        <h2>Broadcast Control</h2>
-        <div class="controls">
-          <button id="start-broadcast-btn" class="btn primary">Start Broadcast</button>
-          <button id="stop-broadcast-btn" class="btn danger" disabled>Stop Broadcast</button>
+        <div id="channel-form" class="channel-form glass-card-nested hidden">
+          <h3>New Station</h3>
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="channel-name" placeholder="e.g. Morning Groove">
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <input type="text" id="channel-description" placeholder="Optional info">
+          </div>
+          <div class="field">
+            <label>Theme Color</label>
+            <input type="color" id="channel-color" value="#ff2d55">
+          </div>
+          <div class="form-actions">
+            <button id="save-channel-btn" class="btn primary-small">Create</button>
+            <button id="cancel-channel-btn" class="btn ghost-small">Cancel</button>
+          </div>
         </div>
-        <p id="broadcast-status" class="status">Select a channel to start broadcasting</p>
-      </section>
 
-      <section class="recording-section">
-        <h2>Recording</h2>
-        <div class="controls">
-          <button id="start-recording-btn" class="btn secondary" disabled>Start Recording</button>
-          <button id="stop-recording-btn" class="btn danger" disabled>Stop Recording</button>
-        </div>
-        <p id="recording-status" class="status">Start broadcast to enable recording</p>
-        <p id="recording-id" class="recording-id"></p>
-      </section>
+        <p id="channel-status" class="status-msg"></p>
+      </aside>
 
-      <section class="recordings-section">
-        <h2>Recordings</h2>
-        <div id="recordings-list" class="recordings-list">
-          <p class="empty">No recordings yet</p>
+      <!-- Center: Controls -->
+      <div class="main-content">
+        <div class="control-grid">
+          <!-- Broadcast Control -->
+          <section class="section-card glass-card">
+            <div class="section-header">
+              <h2><i data-lucide="mic"></i> Broadcast</h2>
+            </div>
+            <div class="status-banner" id="broadcast-status">Select a station to go live</div>
+            <div class="control-actions">
+              <button id="start-broadcast-btn" class="btn primary large-btn">
+                <i data-lucide="play"></i>
+                <span>Go Live</span>
+              </button>
+              <button id="stop-broadcast-btn" class="btn danger large-btn" disabled>
+                <i data-lucide="square"></i>
+                <span>End Stream</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Recording Control -->
+          <section class="section-card glass-card">
+            <div class="section-header">
+              <h2><i data-lucide="disc"></i> Recording</h2>
+            </div>
+            <div class="status-banner" id="recording-status">Waiting for broadcast...</div>
+            <div class="control-actions">
+              <button id="start-recording-btn" class="btn secondary large-btn" disabled>
+                <i data-lucide="circle"></i>
+                <span>Record</span>
+              </button>
+              <button id="stop-recording-btn" class="btn danger large-btn" disabled>
+                <i data-lucide="square"></i>
+                <span>Stop</span>
+              </button>
+            </div>
+            <p id="recording-id" class="recording-id"></p>
+          </section>
         </div>
-      </section>
+
+        <!-- Latest Recordings -->
+        <section class="section-card glass-card recordings-container">
+          <div class="section-header">
+            <h2><i data-lucide="history"></i> Recent Recordings</h2>
+            <button id="refresh-recordings-btn" class="btn-small icon-btn-ghost">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <div id="recordings-list" class="recordings-list">
+            <div class="empty-state">
+              <i data-lucide="music"></i>
+              <p>No recordings found yet.</p>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
+
+    <footer class="main-footer">
+      <p>OcaTech-Live Broadcaster Studio • Control Center v2.0</p>
+    </footer>
   </div>
 
+  <audio id="audio-player"></audio>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socketUrl = window.SERVER_URL || '';
-    window.API_URL = window.API_URL || window.SERVER_URL || '';
     const socket = io(socketUrl);
+    lucide.createIcons();
   </script>
   <script src="/admin/app.js"></script>
 </body>
+
 </html>
