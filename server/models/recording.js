@@ -49,19 +49,24 @@ const RecordingModel = {
   },
 
   async findLatestByChannelId(channelId) {
-    // Try channel specific first
-    const { data, error } = await getSupabase()
-      .from('recordings')
-      .select('*')
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      // Try channel specific first
+      const { data, error } = await getSupabase()
+        .from('recordings')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!error && data) return data;
+      if (!error && data) return data;
 
-    // Fallback to any latest
-    return this.findLatest();
+      // Fallback to any latest recorded by anyone
+      return this.findLatest();
+    } catch (e) {
+      console.error('findLatestByChannelId error:', e);
+      return null;
+    }
   },
 
   async findLatest() {
@@ -70,10 +75,9 @@ const RecordingModel = {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       console.error('Error fetching latest recording:', error);
       return null;
     }
@@ -85,10 +89,9 @@ const RecordingModel = {
       .from('recordings')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       console.error(`Error finding recording ${id}:`, error);
       return null;
     }
