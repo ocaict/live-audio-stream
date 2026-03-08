@@ -206,6 +206,8 @@ function initChart() {
         x: { display: false },
         y: {
           beginAtZero: true,
+          suggestedMax: 5,
+          grace: '5%',
           grid: { color: 'rgba(255, 255, 255, 0.05)' },
           ticks: { color: '#94a3b8', font: { size: 10 }, stepSize: 1 }
         }
@@ -857,7 +859,9 @@ socket.on('new-message', (msg) => {
 });
 
 function appendMessage(msg) {
-  const isOwn = msg.username === 'admin'; // For dashboard we assume broadcaster is 'admin' or use station name
+  const currentUsername = document.getElementById('header-username')?.textContent || 'Broadcaster';
+  const isOwn = msg.username === currentUsername || msg.username === 'Broadcaster' || msg.username === 'admin';
+
   const div = document.createElement('div');
   div.className = `message-item ${isOwn ? 'own' : ''}`;
 
@@ -875,10 +879,12 @@ chatForm.addEventListener('submit', (e) => {
   const content = chatInput.value.trim();
   if (!content || !selectedChannelId) return;
 
+  const currentUsername = document.getElementById('header-username')?.textContent || 'Broadcaster';
+
   socket.emit('send-message', {
     channelId: selectedChannelId,
     content,
-    username: 'Broadcaster' // Default for dashboard
+    username: currentUsername
   });
 
   chatInput.value = '';
