@@ -119,15 +119,22 @@ logoutBtn.addEventListener('click', logout);
 async function loadMyChannels() {
   try {
     const res = await apiFetch('/api/channels/my/channels');
-    myChannels = await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load channels');
+    myChannels = Array.isArray(data) ? data : [];
     renderChannelSelector();
   } catch (e) {
     console.error('Failed to load channels:', e);
-    channelStatus.textContent = 'Failed to load channels';
+    myChannels = [];
+    channelStatus.textContent = 'Failed to load channels: ' + e.message;
   }
 }
 
 function renderChannelSelector() {
+  if (!Array.isArray(myChannels)) {
+    myChannels = [];
+  }
+
   if (myChannels.length === 0) {
     channelSelect.innerHTML = '<option value="">No channels yet - create one!</option>';
     startBroadcastBtn.disabled = true;
@@ -376,12 +383,21 @@ stopRecordingBtn.addEventListener('click', async () => {
 async function loadRecordings() {
   try {
     const res = await apiFetch('/api/recordings');
-    renderRecordings(await res.json());
-  } catch (e) { console.error(e); }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load recordings');
+    renderRecordings(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error(e);
+    renderRecordings([]);
+  }
 }
 
 function renderRecordings(recordings) {
-  if (!recordings || recordings.length === 0) {
+  if (!Array.isArray(recordings)) {
+    recordings = [];
+  }
+
+  if (recordings.length === 0) {
     recordingsList.innerHTML = '<p class="empty">No recordings</p>';
     return;
   }

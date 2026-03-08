@@ -96,15 +96,23 @@ function refreshUI() {
 async function loadChannels() {
   try {
     const res = await fetch('/api/channels');
-    State.channels = await res.json();
+    if (!res.ok) {
+      throw new Error(`Failed to load channels: ${res.status}`);
+    }
+    const data = await res.json();
+    State.channels = Array.isArray(data) ? data : [];
     renderChannelSelector();
   } catch (e) {
     console.error('Failed to load channels:', e);
+    State.channels = [];
     channelSelect.innerHTML = '<option value="">Failed to load channels</option>';
   }
 }
 
 function renderChannelSelector() {
+  if (!Array.isArray(State.channels)) {
+    State.channels = [];
+  }
   const savedId = channelSelect.value || State.channelId;
 
   if (State.channels.length === 0) {
@@ -405,7 +413,7 @@ socket.on('connect_error', (error) => {
 });
 
 socket.on('channels-list', (channelsData) => {
-  State.channels = channelsData;
+  State.channels = Array.isArray(channelsData) ? channelsData : [];
   renderChannelSelector();
 });
 
@@ -419,8 +427,10 @@ socket.on('channel-live', (data) => {
   lastChannelLiveEvent = eventKey;
   setTimeout(() => { lastChannelLiveEvent = null; }, 500);
 
+  if (!Array.isArray(State.channels)) {
+    State.channels = [];
+  }
   const ch = State.channels.find(c => String(c.id) === String(data.channelId));
-
   if (ch) {
     ch.isLive = data.isLive;
   } else {
