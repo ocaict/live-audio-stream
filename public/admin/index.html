@@ -52,7 +52,25 @@
             <span>Login</span>
             <i data-lucide="log-in"></i>
           </button>
+          <p class="toggle-auth">Don't have an account? <a href="#" id="show-register">Register</a></p>
         </form>
+
+        <form id="register-form" class="hidden">
+          <div class="input-group">
+            <i data-lucide="user-plus"></i>
+            <input type="text" id="reg-username" placeholder="Username" required>
+          </div>
+          <div class="input-group">
+            <i data-lucide="lock"></i>
+            <input type="password" id="reg-password" placeholder="Password" required>
+          </div>
+          <button type="submit" class="btn primary full-width">
+            <span>Create Account</span>
+            <i data-lucide="user-plus"></i>
+          </button>
+          <p class="toggle-auth">Already have an account? <a href="#" id="show-login">Login</a></p>
+        </form>
+
         <p id="login-error" class="error-text"></p>
       </div>
     </div>
@@ -65,6 +83,10 @@
         <div class="logo">
           <i data-lucide="radio" class="logo-icon"></i>
           <span>OcaTech-Live</span>
+        </div>
+        <div class="user-profile">
+          <i data-lucide="user-circle"></i>
+          <span id="header-username">...</span>
         </div>
         <div class="header-right">
           <div id="live-indicator" class="indicator offline">

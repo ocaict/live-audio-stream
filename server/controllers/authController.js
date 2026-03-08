@@ -1,6 +1,20 @@
 const AuthService = require('../services/authService');
 
 const authController = {
+  async register(req, res) {
+    try {
+      const { username, password, role } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+      }
+
+      await AuthService.register(username, password, role);
+      res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
   async login(req, res) {
     try {
       const { username, password } = req.body;

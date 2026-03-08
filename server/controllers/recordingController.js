@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const RecordingModel = require('../models/recording');
+const ChannelModel = require('../models/channel');
 const { getRecordingsDir } = require('../config/database');
 const cloudinaryService = require('../services/cloudinaryService');
 const CONFIG = require('../config/constants');
@@ -9,9 +10,24 @@ const CONFIG = require('../config/constants');
 const recordingController = {
   async list(req, res) {
     try {
-      const recordings = await RecordingModel.findAll();
+      let recordings;
+      if (req.user && req.user.role === 'admin') {
+        console.log('Admin user requesting all recordings.');
+        recordings = await RecordingModel.findAll();
+      } else if (req.user) {
+        // Broadcaster: only see recordings for their channels
+        console.log(`User ${req.user.id} (role: ${req.user.role}) requesting recordings for their channels.`);
+        const myChannels = await ChannelModel.findByAdminId(req.user.id);
+        const channelIds = myChannels.map(c => c.id);
+        console.log(`Found channels for user ${req.user.id}: ${channelIds}`);
+        recordings = await RecordingModel.findByChannelIds(channelIds);
+      } else {
+        console.log('Unauthorized access attempt to list recordings.');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       res.json(recordings);
     } catch (error) {
+      console.error('Error listing recordings:', error);
       res.status(500).json({ error: error.message });
     }
   },

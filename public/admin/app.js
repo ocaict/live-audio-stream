@@ -14,7 +14,10 @@ const loaderScreen = document.getElementById('loading-screen');
 const loginScreen = document.getElementById('login-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
 const loginError = document.getElementById('login-error');
+const showRegisterBtn = document.getElementById('show-register');
+const showLoginBtn = document.getElementById('show-login');
 
 const channelSelect = document.getElementById('channel-select');
 const createChannelBtn = document.getElementById('create-channel-btn');
@@ -184,7 +187,7 @@ async function checkAuth() {
     const res = await apiFetch('/api/auth/check');
     const data = await res.json();
     if (data.authenticated) {
-      showDashboard();
+      showDashboard(data.user);
       await loadRTCConfig();
       loadMyChannels();
     } else {
@@ -210,9 +213,12 @@ function showLogin() {
   showScreen('login-screen');
 }
 
-function showDashboard() {
+function showDashboard(user) {
   showScreen('dashboard-screen');
   loadRecordings();
+  if (user && user.username) {
+    document.getElementById('header-username').textContent = user.username;
+  }
 }
 
 async function login(username, password) {
@@ -224,9 +230,37 @@ async function login(username, password) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    showDashboard();
+    await loadRTCConfig();
+    showDashboard(data.user);
     loadMyChannels();
-  } catch (e) { loginError.textContent = e.message; }
+  } catch (e) {
+    loginError.textContent = e.message;
+    loginError.style.color = 'var(--danger)';
+  }
+}
+
+async function register(username, password) {
+  try {
+    loginError.textContent = 'Creating account...';
+    loginError.style.color = 'var(--text-dim)';
+
+    const res = await apiFetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    loginError.textContent = 'Account created! Logging in...';
+    loginError.style.color = 'var(--success)';
+
+    // Auto-login after registration
+    setTimeout(() => login(username, password), 1000);
+  } catch (e) {
+    loginError.textContent = e.message;
+    loginError.style.color = 'var(--danger)';
+  }
 }
 
 function logout() {
@@ -237,6 +271,28 @@ loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   login(document.getElementById('username').value, document.getElementById('password').value);
 });
+
+registerForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  register(document.getElementById('reg-username').value, document.getElementById('reg-password').value);
+});
+
+showRegisterBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  loginForm.classList.add('hidden');
+  registerForm.classList.remove('hidden');
+  loginError.textContent = '';
+  document.querySelector('.login-box h1').textContent = 'Broadcaster Signup';
+});
+
+showLoginBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  registerForm.classList.add('hidden');
+  loginForm.classList.remove('hidden');
+  loginError.textContent = '';
+  document.querySelector('.login-box h1').textContent = 'Broadcaster Admin';
+});
+
 logoutBtn.addEventListener('click', logout);
 
 async function loadMyChannels() {

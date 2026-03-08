@@ -1,22 +1,43 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const AdminModel = require('../models/admin');
+const UserModel = require('../models/user');
 const CONFIG = require('../config/constants');
 
 const AuthService = {
+  async register(username, password, role = 'broadcaster') {
+    const existingUser = await UserModel.findByUsername(username);
+    if (existingUser) {
+      throw new Error('Username already exists');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    return await UserModel.create({
+      username,
+      passwordHash,
+      role
+    });
+  },
+
   async login(username, password) {
-    const admin = await AdminModel.findByUsername(username);
-    if (!admin) {
+    // Try user table first
+    let user = await UserModel.findByUsername(username);
+
+    // Fallback or legacy check if needed? No, let's stick to the new table.
+    // If the user hasn't migrated 'admin' to 'users' table, we might need a migration note.
+
+    if (!user) {
       throw new Error('Invalid credentials');
     }
 
-    const validPassword = await bcrypt.compare(password, admin.password_hash);
+    const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
       throw new Error('Invalid credentials');
     }
 
     const token = jwt.sign(
-      { id: admin.id, username: admin.username },
+      { id: user.id, username: user.username, role: user.role || 'broadcaster' },
       CONFIG.JWT_SECRET,
       { expiresIn: CONFIG.JWT_EXPIRES_IN }
     );
@@ -24,8 +45,9 @@ const AuthService = {
     return {
       token,
       user: {
-        id: admin.id,
-        username: admin.username
+        id: user.id,
+        username: user.username,
+        role: user.role || 'broadcaster'
       }
     };
   },

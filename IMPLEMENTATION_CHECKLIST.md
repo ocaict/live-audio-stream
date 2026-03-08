@@ -34,15 +34,11 @@
 *   [x] **Buffered Playback**: Added a 500ms `playoutDelayHint` to listener streams, significantly improving audio stability under network jitter.
 
 ### 🟢 Phase 4: Multi-User System
-*   [ ] **User Accounts**: Registration and Login system for multiple broadcasters (non-admins).
-*   [ ] **Channel Ownership**: Users manage their own stations and recordings; Admins oversee everything.
-*   [ ] **Auth Middleware Update**: Update API routes to enforce channel ownership.
+*   [x] **User Accounts**: Registration and Login system implemented using a new `users` table with roles (Admin/Broadcaster). Successfully migrated legacy `admins` to the new UUID-based system.
+*   [x] **Channel Ownership**: Channels are now private to their creators. Broadcasters only see and manage their own stations.
+*   [x] **Auth Middleware Update**: Restricted sensitive actions (Edit, Delete, Upload) to resource owners via `requireChannelOwnership` and `requireRecordingOwnership`.
 
----
-
-## 📅 FUTURE ENHANCEMENTS
-
-### 🟣 Phase 5: Advanced Features
+### � Phase 5: Performance & UX (NEXT UP 🚀)
 *   [ ] **Recording Metadata**: Add Title, Description, and Tags to recordings during/after session.
 *   [ ] **Recording Management**: Search, filter by station, and bulk delete operations.
 *   [ ] **Live Chat**: Real-time message board for listeners during a broadcast.

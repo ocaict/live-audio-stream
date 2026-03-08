@@ -1,4 +1,6 @@
 const AuthService = require('../services/authService');
+const ChannelModel = require('../models/channel');
+const RecordingModel = require('../models/recording');
 
 const authenticateToken = (req, res, next) => {
   let token = req.cookies?.token;
@@ -21,13 +23,38 @@ const authenticateToken = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.username !== 'admin') {
+  if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
 
+const requireChannelOwnership = async (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+
+  // Admins bypass ownership checks
+  if (req.user.role === 'admin') return next();
+
+  const channelId = req.params.id || req.body.channelId;
+  if (!channelId) return res.status(400).json({ error: 'Channel ID required' });
+
+  try {
+    const channel = await ChannelModel.findById(channelId);
+    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+    if (String(channel.admin_id) !== String(req.user.id)) {
+      console.warn(`[AUTH] User ${req.user.id} attempted to access restricted channel ${channelId}`);
+      return res.status(403).json({ error: 'Access denied: You do not own this channel' });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Ownership verification failed' });
+  }
+};
+
 module.exports = {
   authenticateToken,
-  requireAdmin
+  requireAdmin,
+  requireChannelOwnership
 };

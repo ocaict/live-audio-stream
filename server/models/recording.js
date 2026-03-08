@@ -110,6 +110,22 @@ const RecordingModel = {
     }
   },
 
+  async findByChannelIds(channelIds) {
+    if (!channelIds || channelIds.length === 0) return [];
+
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .in('channel_id', channelIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching recordings for multiple channels:`, error);
+      return [];
+    }
+    return data || [];
+  },
+
   async updateFilesize(id, filesize) {
     const { error } = await getSupabase()
       .from('recordings')
