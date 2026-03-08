@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const recordingController = require('../controllers/recordingController');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requireChannelOwnership, requireRecordingOwnership } = require('../middleware/auth');
 const { recordingIdValidation } = require('../middleware/validation');
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
