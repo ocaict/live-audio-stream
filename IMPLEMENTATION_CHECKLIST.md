@@ -1,63 +1,61 @@
-# 📋 Implementation Checklist: ocaTech-live
+# 📋 Implementation Checklist: ocaTech-live (Consolidated)
+---
 
-This checklist outlines the recommended improvements for the Radio Live Stream application, prioritized by their impact on reliability, security, and scalability.
+## ✅ COMPLETED FEATURES
 
-## 🔴 Phase 0: Critical Reliability & Security (COMPLETED ✅)
+### 🔴 Phase 0: Reliability & Core Security
+*   [x] **Real-time Chunked Recording**: No more in-memory buffering; streams 1s chunks to disk.
+*   [x] **FFmpeg Conversion**: Automatic transcoding to MP3 for storage/playback.
+*   [x] **Supabase Migration**: Moved from local SQLite to a professional Cloud Postgres database.
+*   [x] **Cloudinary Storage**: Persistent audio hosting for all recordings.
+*   [x] **Auto-Cleanup**: Automated deletion of local and cloud files when a recording is removed.
+*   [x] **Socket.IO Security**: Role-based authentication using JWT for broadcasters.
+*   [x] **Environment Validation**: Server performs a pre-flight check for missing secrets and default credentials.
 
-### 1. Real-time Recording Migration
-*   [x] **Admin UI Refactor**: Removed in-memory buffering; now using chunked streaming.
-*   [x] **Socket Streaming**: Implemented `audio-chunk` streaming via `MediaRecorder`.
-*   [x] **Server-side Writer**: `RecordingService.js` now writes directly to disk and converts to MP3.
-*   [x] **Data Safety**: Recordings are saved to files immediately, preventing memory-loss crashes.
-
-### 2. Database Migration & Security
-*   [x] **Migration to Supabase**: Moved from local SQLite to Cloud Postgres for production reliability.
-*   [x] **Cloud Storage**: Integrated Cloudinary for persistent audio hosting.
-*   [x] **Auto-Cleanup**: Implemented automatic deletion of files from Cloudinary and Local disk.
-
-### 3. Socket.IO Authentication
-*   [x] **Middleware Implementation**: Verified JWT for broadcasters from cookies/headers.
-*   [x] **Role-based Actions**: Only authenticated admins can start broadcasts or recordings.
+### 🟡 Phase 1: DX & Professional UI
+*   [x] **Concurrent Recordings**: Map-based service supports multiple broadcasters/stations simultaneously.
+*   [x] **Premium UI**: Glassmorphism design system implemented across Listener and Admin pages.
+*   [x] **Live Visualizer**: Real-time waveform feedback for listeners.
+*   [x] **Automatic Reconnection**: Listeners now automatically sync when a stream goes live/offline.
+*   [x] **Station Management**: Admins can Create, Edit, and Delete stations directly from the UI.
+*   [x] **Audio Quality Toggles**: Hardware-level Echo Cancellation, Noise Suppression, and Gain Control.
+*   [x] **Real-time Stats**: Interactive Chart.js trend visualization for audience engagement.
+*   [x] **Volume Persistence**: Listeners' volume levels are saved in `localStorage`.
 
 ---
 
-## 🟡 Phase 1: Architectural Robustness (Next Steps 🚀)
+## 🚀 ACTIVE ROADMAP (Next Steps)
 
-### 4. Support Concurrent Recordings (COMPLETED ✅)
-*   [x] **Map-based State**: Refactored `RecordingService.js` to use a `Map<channelId, recordingContext>` for total isolation.
-*   [x] **Isolated Handlers**: Socket events now route audio chunks to the specific channel's stream.
+### 🔵 Phase 3: Infrastructure & Production Readiness (IN PROGRESS 🏗️)
+*   [x] **Broadcaster Auto-Resume**: Implemented a 15-second grace period on the server! Broadcasters can now refresh their dashboard or recover from minor network drops without the station going 'Offline' or losing recording progress.
+*   [ ] **TURN Server Configuration**: Integrate STUN/TURN (Twilio/Metered) for 100% WebRTC reliability behind firewalls.
+*   [ ] **Request Logging**: Integrate `morgan` for server-side audit trails and debugging.
+*   [ ] **CORS Hardening**: Restrict `CORS_ORIGIN` in production instead of using a wildcard.
+*   [ ] **Buffered Playback**: Improve listener buffering to handle minor network jitter/latencies.
 
-### 5. Web Audio API & Listener UX (COMPLETED ✅)
-*   [x] **Premium UI**: Implemented high-fidelity "Glassmorphism" for both Listener and Admin.
-*   [x] **Live Visualizer**: Integrated real-time audio visualization using Web Audio API.
-*   [x] **Volume Persistence**: Listeners' volume preference is now saved in `localStorage`.
-*   [ ] **Buffered Playback**: Improve listener buffer management to handle minor network jitter.
-
-### 6. Environment & Startup Validation
-*   [x] **Fail-Fast Checks**: Server validates Supabase and Cloudinary connectivity on boot.
-
----
-
-## 🔵 Phase 2: User Experience & Analytics (Enhancement)
-
-### 7. Admin Dashboard Polish (COMPLETED ✅)
-*   [x] **Station Management**: Admins can now Create, Edit, and Delete stations directly from the dashboard sidebar.
-*   [x] **Audio Quality Settings**: Added toggles for Echo Cancellation, Noise Suppression, and Auto Gain Control for professional broadcasting.
-*   [x] **Real-time Stats**: Implemented interactive Chart.js trend for listener counts with a 2-minute sliding window.
-
-### 8. Listener UX Improvements (COMPLETED ✅)
-*   [x] **Automatic Reconnection**: Listeners now sync automatically when a broadcast status changes.
-*   [x] **Volume Persistence**: Integrated volume slider and localStorage state for user preferences.
+### 🟢 Phase 4: Multi-User System
+*   [ ] **User Accounts**: Registration and Login system for multiple broadcasters (non-admins).
+*   [ ] **Channel Ownership**: Users manage their own stations and recordings; Admins oversee everything.
+*   [ ] **Auth Middleware Update**: Update API routes to enforce channel ownership.
 
 ---
 
-## 🟣 Phase 3: Infrastructure & Scalability (Advanced)
+## 📅 FUTURE ENHANCEMENTS
 
-### 9. Media Server Integration (SFU)
-*   [ ] **Mediasoup/Janus Research**: Plan for a transition from P2P to an SFU architecture for 100+ listeners.
-*   [ ] **Load Balancing**: Implement a Redis adapter for Socket.IO to support multiple node server instances.
+### 🟣 Phase 5: Advanced Features
+*   [ ] **Recording Metadata**: Add Title, Description, and Tags to recordings during/after session.
+*   [ ] **Recording Management**: Search, filter by station, and bulk delete operations.
+*   [ ] **Live Chat**: Real-time message board for listeners during a broadcast.
+*   [ ] **Broadcast Scheduling**: Allow broadcasters to schedule future shows.
+*   [ ] **Social Embeds**: Create a lightweight iframe player for external site embeds.
+
+### 🛡️ Phase 6: Quality & Scalability
+*   [ ] **SFU Integration**: Shift from P2P to an SFU (Mediasoup/Janus) for 100+ concurrent listeners.
+*   [ ] **Redis Adapter**: Support for multiple server instances using Socket.IO Redis adapter.
+*   [ ] **PWA Support**: Service worker for "Install to Mobile" functionality and offline fallback.
+*   [ ] **TypeScript Migration**: Full codebase migration for long-term type safety.
+*   [ ] **Testing**: Implement Jest for core services and API unit testing.
 
 ---
 
-> [!TIP]
-> **Priority Recommendation**: Focus on **Task 4 (Concurrent Recordings)**. While it works for one channel now, a Map-based architecture is essential if your station grows to have multiple broadcasters working at the same time.
+

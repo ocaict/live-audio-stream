@@ -4,12 +4,14 @@ class WebRTCService extends EventEmitter {
   constructor() {
     super();
     this.channels = new Map();
+    this.disconnectTimeouts = new Map();
   }
 
   getOrCreateChannel(channelId) {
     if (!this.channels.has(channelId)) {
       this.channels.set(channelId, {
         isLive: false,
+        isReconnecting: false,
         broadcasterSocket: null,
         listenerCount: 0,
         listenerSockets: new Map()
@@ -20,16 +22,57 @@ class WebRTCService extends EventEmitter {
 
   startBroadcast(socket, channelId) {
     const channel = this.getOrCreateChannel(channelId);
+
+    // Clear any pending disconnect timeout
+    if (this.disconnectTimeouts.has(channelId)) {
+      clearTimeout(this.disconnectTimeouts.get(channelId));
+      this.disconnectTimeouts.delete(channelId);
+      console.log(`[WebRTC] Cancelled disconnect timeout for channel ${channelId} - Broadcaster returned.`);
+    }
+
     channel.isLive = true;
+    channel.isReconnecting = false;
     channel.broadcasterSocket = socket;
     this.emit('channel-live', { channelId, isLive: true });
+  }
+
+  requestStopBroadcast(channelId, delayMs = 15000, onTimeout = null) {
+    const channel = this.channels.get(channelId);
+    if (!channel || !channel.isLive) return;
+
+    if (this.disconnectTimeouts.has(channelId)) return;
+
+    console.log(`[WebRTC] Broadcaster disconnected from ${channelId}. Waiting ${delayMs}ms for reconnection...`);
+    channel.isReconnecting = true;
+
+    const timeout = setTimeout(async () => {
+      console.log(`[WebRTC] Reconnection grace period expired for ${channelId}. Cleaning up...`);
+      if (onTimeout) {
+        try {
+          await onTimeout();
+        } catch (e) {
+          console.error(`[WebRTC] Error in disconnect callback for ${channelId}:`, e.message);
+        }
+      }
+      this.stopBroadcast(channelId);
+      this.disconnectTimeouts.delete(channelId);
+    }, delayMs);
+
+    this.disconnectTimeouts.set(channelId, timeout);
   }
 
   stopBroadcast(channelId) {
     const channel = this.channels.get(channelId);
     if (!channel) return;
 
+    // Clear any pending timeout if stopping manually
+    if (this.disconnectTimeouts.has(channelId)) {
+      clearTimeout(this.disconnectTimeouts.get(channelId));
+      this.disconnectTimeouts.delete(channelId);
+    }
+
     channel.isLive = false;
+    channel.isReconnecting = false;
 
     this.emit('channel-live', { channelId, isLive: false });
 
@@ -49,7 +92,7 @@ class WebRTCService extends EventEmitter {
   addListener(socket, channelId) {
     const channel = this.getOrCreateChannel(channelId);
     if (!channel.isLive) return false;
-    
+
     channel.listenerSockets.set(socket.id, socket);
     channel.listenerCount = channel.listenerSockets.size;
     this.emit('listener-count-changed', { channelId, count: channel.listenerCount });

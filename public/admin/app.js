@@ -133,13 +133,21 @@ function updateChart(newCount) {
     peakListeners = newCount;
     const peakEl = document.getElementById('peak-listeners');
     if (peakEl) peakEl.textContent = peakListeners;
+    if (selectedChannelId) {
+      localStorage.setItem(`peak_listeners_${selectedChannelId}`, peakListeners);
+    }
   }
 }
 
 function resetChart() {
   peakListeners = 0;
+  if (selectedChannelId) {
+    const saved = localStorage.getItem(`peak_listeners_${selectedChannelId}`);
+    if (saved) peakListeners = parseInt(saved, 10) || 0;
+  }
+
   const peakEl = document.getElementById('peak-listeners');
-  if (peakEl) peakEl.textContent = '0';
+  if (peakEl) peakEl.textContent = peakListeners;
 
   chartDataArr = Array(20).fill(0);
   if (trendChart) {
@@ -250,6 +258,18 @@ function renderChannelSelector() {
 
   if (selectedChannelId) {
     channelSelect.value = selectedChannelId;
+  } else {
+    const active = sessionStorage.getItem('activeChannelId');
+    if (active && myChannels.some(c => String(c.id) === String(active))) {
+      selectedChannelId = active;
+      channelSelect.value = selectedChannelId;
+      console.log('[Auto-Resume] Active session detected, resuming station:', selectedChannelId);
+
+      // Short delay for socket/auth to fully settle
+      setTimeout(() => {
+        if (!isLive) startBroadcast(selectedChannelId);
+      }, 500);
+    }
   }
 
   startBroadcastBtn.disabled = !selectedChannelId;
@@ -259,7 +279,8 @@ function renderChannelSelector() {
 
 channelSelect.addEventListener('change', () => {
   selectedChannelId = channelSelect.value;
-  const channel = myChannels.find(c => c.id === selectedChannelId);
+  sessionStorage.setItem('lastSelectedChannelId', selectedChannelId); // Extra persistence
+  const channel = myChannels.find(c => String(c.id) === String(selectedChannelId));
 
   if (channel?.isLive) {
     broadcastStatus.textContent = 'This channel is live';
@@ -415,9 +436,9 @@ function encodeWAV(buffers, sampleRate) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
-startBroadcastBtn.addEventListener('click', async () => {
-  if (!selectedChannelId) {
-    broadcastStatus.textContent = 'Please select a channel first';
+async function startBroadcast(channelId) {
+  if (!channelId) {
+    broadcastStatus.textContent = 'Please select a station first';
     return;
   }
 
@@ -434,7 +455,7 @@ startBroadcastBtn.addEventListener('click', async () => {
     };
 
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-    console.log('Got stream with constraints:', constraints.audio);
+    console.log('[Broadcast] Got media stream with constraints:', constraints.audio);
 
     audioContext = new AudioContext({ sampleRate: 44100 });
     const source = audioContext.createMediaStreamSource(mediaStream);
@@ -446,24 +467,34 @@ startBroadcastBtn.addEventListener('click', async () => {
       return;
     }
 
-    socket.emit('join-channel', { channelId: selectedChannelId, role: 'broadcaster' });
+    socket.emit('join-channel', { channelId, role: 'broadcaster' });
 
     setTimeout(() => {
-      socket.emit('broadcaster-ready', { channelId: selectedChannelId });
+      socket.emit('broadcaster-ready', { channelId });
     }, 100);
 
     startBroadcastBtn.disabled = true;
     stopBroadcastBtn.disabled = false;
-    startRecordingBtn.disabled = !selectedChannelId;
+    startRecordingBtn.disabled = false;
     broadcastStatus.textContent = 'Broadcasting...';
     liveIndicator.textContent = '● Live';
     liveIndicator.className = 'indicator live';
     isLive = true;
+
+    sessionStorage.setItem('activeChannelId', channelId);
+
+    // Auto-resume recording if it was active
+    if (sessionStorage.getItem('isRecordingActive') === 'true') {
+      console.log('[Auto-Resume] Resuming recording stream...');
+      setTimeout(() => startRecordingStream(), 1000);
+    }
   } catch (e) {
-    console.error('Error:', e);
+    console.error('[Broadcast] Error starting:', e);
     broadcastStatus.textContent = 'Error: ' + e.message;
   }
-});
+}
+
+startBroadcastBtn.addEventListener('click', () => startBroadcast(selectedChannelId));
 
 stopBroadcastBtn.addEventListener('click', () => {
   if (isRecording) {
@@ -486,36 +517,43 @@ stopBroadcastBtn.addEventListener('click', () => {
   liveIndicator.textContent = '● Offline';
   liveIndicator.className = 'indicator offline';
   isLive = false;
+
+  sessionStorage.removeItem('activeChannelId');
 });
 
-startRecordingBtn.addEventListener('click', () => {
+async function startRecordingStream() {
   if (!audioContext || !mediaStreamDestination) {
-    alert('Start broadcast first');
+    console.warn('[Recording] Broadcast must be active to record');
     return;
   }
 
-  // Notify server we are starting
-  socket.emit('start-recording', { channelId: selectedChannelId });
+  try {
+    // Notify server we are starting (if not already recorded)
+    socket.emit('start-recording', { channelId: selectedChannelId });
 
-  mediaRecorder = new MediaRecorder(mediaStreamDestination.stream, {
-    mimeType: 'audio/webm;codecs=opus'
-  });
+    mediaRecorder = new MediaRecorder(mediaStreamDestination.stream, {
+      mimeType: 'audio/webm;codecs=opus'
+    });
 
-  mediaRecorder.ondataavailable = (event) => {
-    if (event.data && event.data.size > 0 && isRecording) {
-      // Stream chunk to server directly
-      socket.emit('audio-chunk', event.data);
-    }
-  };
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0 && isRecording) {
+        socket.emit('audio-chunk', event.data);
+      }
+    };
 
-  // Capture chunks every 1 second
-  mediaRecorder.start(1000);
+    mediaRecorder.start(1000); // 1s chunks
+    isRecording = true;
+    startRecordingBtn.disabled = true;
+    stopRecordingBtn.disabled = false;
+    recordingStatus.textContent = 'Recording (Streaming)...';
+    sessionStorage.setItem('isRecordingActive', 'true');
+  } catch (e) {
+    console.error('[Recording] Failed to start:', e);
+    recordingStatus.textContent = 'Error: ' + e.message;
+  }
+}
 
-  isRecording = true;
-  startRecordingBtn.disabled = true;
-  stopRecordingBtn.disabled = false;
-  recordingStatus.textContent = 'Recording (Streaming)...';
-});
+startRecordingBtn.addEventListener('click', startRecordingStream);
 
 stopRecordingBtn.addEventListener('click', async () => {
   if (!isRecording) return;
@@ -531,6 +569,7 @@ stopRecordingBtn.addEventListener('click', async () => {
   // Server handles the finalization
   socket.emit('stop-recording', { channelId: selectedChannelId });
 
+  sessionStorage.removeItem('isRecordingActive');
   mediaRecorder = null;
 });
 

@@ -37,16 +37,19 @@ function setupSocketHandlers(io) {
       console.log('Client disconnected:', socket.id);
       if (currentChannelId) {
         if (isBroadcaster) {
-          if (recordingService.isRecording(currentChannelId)) {
-            recordingService.stopRecording(currentChannelId).catch(err => {
-              console.error(`Error stopping recording on disconnect for channel ${currentChannelId}:`, err.message);
-            });
-          }
-          webrtcService.stopBroadcast(currentChannelId);
-          await ChannelModel.setLiveStatus(currentChannelId, false);
-          io.to(currentChannelId).emit('channel-live', {
-            channelId: currentChannelId,
-            isLive: false
+          // Instead of immediate stop, give a grace period for reconnection
+          webrtcService.requestStopBroadcast(currentChannelId, 15000, async () => {
+            console.log(`[Grace Period] Broadcaster ${socket.id} for channel ${currentChannelId} did not reconnect. Stopping broadcast.`);
+            // This runs ONLY if the grace period expires
+            if (recordingService.isRecording(currentChannelId)) {
+              try {
+                const recording = await recordingService.stopRecording(currentChannelId);
+                io.to(currentChannelId).emit('recording-stopped', { ...recording, channelId: currentChannelId });
+                console.log(`[Grace Period] Recording finalized after timeout for ${currentChannelId}`);
+              } catch (err) {
+                console.error(`[Grace Period] Error stopping recording for ${currentChannelId}:`, err.message);
+              }
+            }
           });
         } else {
           webrtcService.removeListener(socket.id, currentChannelId);
@@ -117,8 +120,7 @@ function setupSocketHandlers(io) {
       }
 
       webrtcService.startBroadcast(socket, channelId);
-      await ChannelModel.setLiveStatus(channelId, true);
-      console.log(`Broadcaster ready on channel ${channelId}`);
+      console.log(`Broadcaster established on channel ${channelId}`);
     });
 
     socket.on('stop-broadcasting', async (data) => {
@@ -134,9 +136,7 @@ function setupSocketHandlers(io) {
       }
 
       webrtcService.stopBroadcast(channelId);
-      await ChannelModel.setLiveStatus(channelId, false);
-
-      console.log(`Broadcast stopped on channel ${channelId}`);
+      console.log(`Broadcast stopped manually on channel ${channelId}`);
     });
 
     socket.on('offer', (data) => {
@@ -230,9 +230,17 @@ function setupSocketHandlers(io) {
     });
   });
 
-  webrtcService.on('channel-live', (data) => {
+  webrtcService.on('channel-live', async (data) => {
     const { channelId, isLive } = data;
-    io.to(channelId).emit('channel-live', data);
+    try {
+      await ChannelModel.setLiveStatus(channelId, isLive);
+      io.to(channelId).emit('channel-live', data);
+      console.log(`[WebRTC] Channel ${channelId} status synced to DB: ${isLive}`);
+    } catch (e) {
+      console.error(`[WebRTC] Failed to sync channel ${channelId} status to DB:`, e.message);
+      // Still emit to socket so listeners know even if DB fails
+      io.to(channelId).emit('channel-live', data);
+    }
   });
 
   webrtcService.on('listener-count-changed', (data) => {
