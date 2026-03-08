@@ -18,7 +18,10 @@ const State = {
     this[key] = value;
     if (key === 'intent') localStorage.setItem('isListeningIntent', value);
     if (key === 'channelId') localStorage.setItem('lastChannelId', value);
-    if (key === 'volume') localStorage.setItem('userVolume', value);
+    if (key === 'volume') {
+      localStorage.setItem('userVolume', value);
+      if (audioPlayer) audioPlayer.volume = value;
+    }
     console.log(`[State Change] ${key} ->`, value);
     refreshUI();
   }
@@ -231,8 +234,7 @@ async function tryOfflinePlayback() {
     audioPlayer.removeAttribute('src');
     audioPlayer.load();
 
-    audioPlayer.volume = 1.0;
-    audioPlayer.muted = false;
+    audioPlayer.volume = State.volume;
     audioPlayer.src = latestRecordingUrl;
     audioPlayer.loop = true;
 
@@ -305,6 +307,7 @@ async function connectToBroadcast() {
       console.log('Audio track established');
       if (event.streams[0]) {
         audioPlayer.srcObject = event.streams[0];
+        audioPlayer.volume = State.volume;
         audioPlayer.play().then(() => {
           State.commit('isStreaming', true);
           State.commit('isReconnecting', false);

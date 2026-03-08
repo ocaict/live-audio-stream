@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/admin/styles.css">
   <script>
     window.SERVER_URL = '';
@@ -94,6 +95,12 @@
               <option value="">Select Station...</option>
             </select>
           </div>
+          <div class="channel-actions">
+            <button id="edit-channel-btn" class="icon-btn" title="Edit Station" disabled><i
+                data-lucide="edit-3"></i></button>
+            <button id="delete-channel-btn" class="icon-btn danger" title="Delete Station" disabled><i
+                data-lucide="trash-2"></i></button>
+          </div>
         </div>
 
         <div class="audio-settings glass-card-nested">
@@ -175,6 +182,19 @@
             <p id="recording-id" class="recording-id"></p>
           </section>
         </div>
+
+        <!-- Real-time Stats -->
+        <section class="section-card glass-card stats-area">
+          <div class="section-header">
+            <h2><i data-lucide="trending-up"></i> Live Audience Trend</h2>
+            <div id="stats-summary" class="stats-badges">
+              <span class="stat-item">Peak: <b id="peak-listeners">0</b></span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="listener-trend-chart"></canvas>
+          </div>
+        </section>
 
         <!-- Latest Recordings -->
         <section class="section-card glass-card recordings-container">

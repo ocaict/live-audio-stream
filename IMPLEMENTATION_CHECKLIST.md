@@ -41,17 +41,17 @@ This checklist outlines the recommended improvements for the Radio Live Stream a
 ## 🔵 Phase 2: User Experience & Analytics (Enhancement)
 
 ### 7. Admin Dashboard Polish (COMPLETED ✅)
-*   [x] **Station Management**: Admins can now create and manage stations from the new UI.
+*   [x] **Station Management**: Admins can now Create, Edit, and Delete stations directly from the dashboard sidebar.
 *   [x] **Audio Quality Settings**: Added toggles for Echo Cancellation, Noise Suppression, and Auto Gain Control for professional broadcasting.
-*   [ ] **Real-time Stats**: Add a simple time-series chart for listener counts.
+*   [x] **Real-time Stats**: Implemented interactive Chart.js trend for listener counts with a 2-minute sliding window.
 
-### 8. Listener UX Improvements
+### 8. Listener UX Improvements (COMPLETED ✅)
 *   [x] **Automatic Reconnection**: Listeners now sync automatically when a broadcast status changes.
-*   [x] **Offline Fallback**: Automatically plays the latest recording if the station is not live.
+*   [x] **Volume Persistence**: Integrated volume slider and localStorage state for user preferences.
 
 ---
 
-## 🟢 Phase 3: Scalability (Future Growth)
+## 🟣 Phase 3: Infrastructure & Scalability (Advanced)
 
 ### 9. Media Server Integration (SFU)
 *   [ ] **Mediasoup/Janus Research**: Plan for a transition from P2P to an SFU architecture for 100+ listeners.

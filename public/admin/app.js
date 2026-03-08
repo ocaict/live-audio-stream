@@ -6,6 +6,9 @@ let peerConnections = {};
 let pendingIceCandidates = {};
 let myChannels = [];
 let selectedChannelId = null;
+let editingChannelId = null;
+const editChannelBtn = document.getElementById('edit-channel-btn');
+const deleteChannelBtn = document.getElementById('delete-channel-btn');
 
 const loaderScreen = document.getElementById('loading-screen');
 const loginScreen = document.getElementById('login-screen');
@@ -72,6 +75,80 @@ function setupPrefs() {
   }
 }
 setupPrefs();
+
+// --- Charting ---
+let trendChart = null;
+let chartLabels = Array(20).fill(''); // 20 data points
+let chartDataArr = Array(20).fill(0);
+let peakListeners = 0;
+
+function initChart() {
+  const ctx = document.getElementById('listener-trend-chart');
+  if (!ctx) return;
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Live Listeners',
+        data: chartDataArr,
+        borderColor: '#00f2ea',
+        backgroundColor: 'rgba(0, 242, 234, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true }
+      },
+      scales: {
+        x: { display: false },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#94a3b8', font: { size: 10 }, stepSize: 1 }
+        }
+      },
+      animation: { duration: 500 }
+    }
+  });
+}
+
+function updateChart(newCount) {
+  if (!trendChart) return;
+
+  chartDataArr.push(newCount);
+  chartDataArr.shift();
+
+  trendChart.update('none');
+
+  if (newCount > peakListeners) {
+    peakListeners = newCount;
+    const peakEl = document.getElementById('peak-listeners');
+    if (peakEl) peakEl.textContent = peakListeners;
+  }
+}
+
+function resetChart() {
+  peakListeners = 0;
+  const peakEl = document.getElementById('peak-listeners');
+  if (peakEl) peakEl.textContent = '0';
+
+  chartDataArr = Array(20).fill(0);
+  if (trendChart) {
+    trendChart.data.datasets[0].data = chartDataArr;
+    trendChart.update();
+  }
+}
+
+initChart();
 
 let audioContext = null;
 let mediaStreamDestination = null;
@@ -171,7 +248,13 @@ function renderChannelSelector() {
   channelSelect.innerHTML = '<option value="">Select a channel...</option>' +
     myChannels.map(ch => `<option value="${ch.id}">${ch.name} ${ch.isLive ? '(LIVE)' : ''}</option>`).join('');
 
+  if (selectedChannelId) {
+    channelSelect.value = selectedChannelId;
+  }
+
   startBroadcastBtn.disabled = !selectedChannelId;
+  editChannelBtn.disabled = !selectedChannelId;
+  deleteChannelBtn.disabled = !selectedChannelId;
 }
 
 channelSelect.addEventListener('change', () => {
@@ -195,6 +278,45 @@ channelSelect.addEventListener('change', () => {
   }
 
   startRecordingBtn.disabled = !isLive;
+  editChannelBtn.disabled = !selectedChannelId;
+  deleteChannelBtn.disabled = !selectedChannelId;
+  resetChart();
+});
+
+editChannelBtn.addEventListener('click', () => {
+  const channel = myChannels.find(c => c.id === selectedChannelId);
+  if (!channel) return;
+
+  editingChannelId = channel.id;
+  channelNameInput.value = channel.name;
+  channelDescInput.value = channel.description || '';
+  channelColorInput.value = channel.color || '#e94560';
+  document.querySelector('#channel-form h3').textContent = 'Edit Station';
+
+  channelForm.classList.remove('hidden');
+  createChannelBtn.classList.add('hidden');
+});
+
+deleteChannelBtn.addEventListener('click', async () => {
+  if (!selectedChannelId) return;
+  const channel = myChannels.find(c => c.id === selectedChannelId);
+  if (!channel) return;
+
+  if (!confirm(`Are you sure you want to delete "${channel.name}"? This will remove all associated recordings data from the database!`)) return;
+
+  try {
+    const res = await apiFetch(`/api/channels/${selectedChannelId}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    alert('Channel deleted');
+    selectedChannelId = null;
+    loadMyChannels();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
 });
 
 createChannelBtn.addEventListener('click', () => {
@@ -207,6 +329,8 @@ cancelChannelBtn.addEventListener('click', () => {
   createChannelBtn.classList.remove('hidden');
   channelNameInput.value = '';
   channelDescInput.value = '';
+  editingChannelId = null;
+  document.querySelector('#channel-form h3').textContent = 'New Station';
   channelStatus.textContent = '';
 });
 
@@ -221,8 +345,11 @@ saveChannelBtn.addEventListener('click', async () => {
   }
 
   try {
-    const res = await apiFetch('/api/channels', {
-      method: 'POST',
+    const url = editingChannelId ? `/api/channels/${editingChannelId}` : '/api/channels';
+    const method = editingChannelId ? 'PUT' : 'POST';
+
+    const res = await apiFetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, description, color })
     });
@@ -230,7 +357,7 @@ saveChannelBtn.addEventListener('click', async () => {
 
     if (!res.ok) throw new Error(data.error);
 
-    channelStatus.textContent = 'Channel created!';
+    channelStatus.textContent = editingChannelId ? 'Station updated!' : 'Station created!';
     channelStatus.style.color = '#00d9a5';
 
     setTimeout(() => {
@@ -239,6 +366,8 @@ saveChannelBtn.addEventListener('click', async () => {
       channelNameInput.value = '';
       channelDescInput.value = '';
       channelStatus.textContent = '';
+      editingChannelId = null;
+      document.querySelector('#channel-form h3').textContent = 'New Station';
     }, 1000);
 
     loadMyChannels();
@@ -538,7 +667,9 @@ socket.on('channel-live', (data) => {
 socket.on('listener-count', (data) => {
   console.log('Listener count:', data);
   if (data.channelId === selectedChannelId) {
-    listenerCountEl.textContent = `Listeners: ${data.count}`;
+    listenerCountEl.innerHTML = `<i data-lucide="users"></i> ${data.count}`;
+    lucide.createIcons();
+    updateChart(data.count);
   }
 });
 

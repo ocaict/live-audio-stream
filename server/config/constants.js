@@ -5,18 +5,18 @@ const path = require('path');
 const CONFIG = {
   PORT: process.env.PORT || 3000,
   NODE_ENV: process.env.NODE_ENV || 'development',
-  
+
   JWT_SECRET: process.env.JWT_SECRET || 'change-me-in-production',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
-  
+
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'admin123',
-  
+
   RECORDINGS_DIR: path.resolve(process.cwd(), process.env.RECORDINGS_DIR || 'recordings'),
   MAX_RECORDING_SIZE_MB: parseInt(process.env.MAX_RECORDING_SIZE_MB) || 500,
-  
+
   FFMPEG_PATH: process.env.FFMPEG_PATH || 'ffmpeg',
-  
+
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
 
@@ -34,6 +34,36 @@ const CONFIG = {
   // Supabase Configuration
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_KEY: process.env.SUPABASE_KEY || '',
+};
+
+CONFIG.validate = () => {
+  const mandatory = [
+    'SUPABASE_URL',
+    'SUPABASE_KEY',
+    'JWT_SECRET'
+  ];
+
+  const missing = mandatory.filter(key => !process.env[key] && !CONFIG[key]);
+  if (missing.length > 0) {
+    console.error(`\n[FATAL] Missing mandatory environment variables: ${missing.join(', ')}`);
+    if (CONFIG.NODE_ENV === 'production') process.exit(1);
+  }
+
+  if (CONFIG.NODE_ENV === 'production') {
+    if (CONFIG.JWT_SECRET === 'change-me-in-production') {
+      console.warn('[SECURITY] JWT_SECRET is using the default value. Change it immediately!');
+    }
+    if (CONFIG.ADMIN_USERNAME === 'admin' && CONFIG.ADMIN_PASSWORD === 'admin123') {
+      console.warn('[SECURITY] Using default admin credentials (admin/admin123) in production. This is highly discouraged!');
+    }
+  }
+
+  if (CONFIG.CLOUDINARY_ENABLED && (!CONFIG.CLOUDINARY_CLOUD_NAME || !CONFIG.CLOUDINARY_API_KEY)) {
+    console.error('[FATAL] Cloudinary is enabled but credentials are missing.');
+    if (CONFIG.NODE_ENV === 'production') process.exit(1);
+  }
+
+  console.log('[Config] Environment validation passed.');
 };
 
 module.exports = CONFIG;

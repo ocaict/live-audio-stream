@@ -79,6 +79,7 @@ const PORT = CONFIG.PORT;
 
 (async () => {
   try {
+    CONFIG.validate();
     await initializeDatabase();
     ensureRecordingsDirectory();
 
