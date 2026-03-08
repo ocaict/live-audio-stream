@@ -4,15 +4,18 @@ const { v4: uuidv4 } = require('uuid');
 const UserModel = {
     async findByUsername(username) {
         const supabase = getSupabase();
+        // Case-insensitive and trimmed search
+        const cleanUsername = username.trim();
+
         const { data, error } = await supabase
             .from('users')
             .select('*')
-            .eq('username', username)
+            .ilike('username', cleanUsername)
             .single();
 
         if (error) {
             if (error.code === 'PGRST116') return null; // Not found
-            console.error('Error finding user by username:', error);
+            console.error(`[UserModel] Error finding user "${cleanUsername}":`, error);
             return null;
         }
         return data;
