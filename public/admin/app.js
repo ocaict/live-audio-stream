@@ -48,7 +48,7 @@ const rtcConfig = {
 
 let audioContext = null;
 let mediaStreamDestination = null;
-let recordedBuffers = [];
+let mediaRecorder = null;
 
 function apiFetch(url, options = {}) {
   return fetch(API_URL + url, {
@@ -328,56 +328,49 @@ stopBroadcastBtn.addEventListener('click', () => {
 });
 
 startRecordingBtn.addEventListener('click', () => {
-  if (!audioContext) { alert('Start broadcast first'); return; }
-  recordedBuffers = [];
+  if (!audioContext || !mediaStreamDestination) {
+    alert('Start broadcast first');
+    return;
+  }
+
+  // Notify server we are starting
+  socket.emit('start-recording', { channelId: selectedChannelId });
+
+  mediaRecorder = new MediaRecorder(mediaStreamDestination.stream, {
+    mimeType: 'audio/webm;codecs=opus'
+  });
+
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data && event.data.size > 0 && isRecording) {
+      // Stream chunk to server directly
+      socket.emit('audio-chunk', event.data);
+    }
+  };
+
+  // Capture chunks every 1 second
+  mediaRecorder.start(1000);
+
   isRecording = true;
   startRecordingBtn.disabled = true;
   stopRecordingBtn.disabled = false;
-  recordingStatus.textContent = 'Recording...';
+  recordingStatus.textContent = 'Recording (Streaming)...';
 });
 
 stopRecordingBtn.addEventListener('click', async () => {
   if (!isRecording) return;
+
   isRecording = false;
   stopRecordingBtn.disabled = true;
-  recordingStatus.textContent = 'Processing...';
+  recordingStatus.textContent = 'Finalizing Recording...';
 
-  if (recordedBuffers.length === 0) {
-    recordingStatus.textContent = 'No audio data';
-    return;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
   }
 
-  const allData = new Float32Array(recordedBuffers.reduce((sum, b) => sum + b.length, 0));
-  let offset = 0;
-  recordedBuffers.forEach(buf => {
-    allData.set(buf, offset);
-    offset += buf.length;
-  });
+  // Server handles the finalization
+  socket.emit('stop-recording', { channelId: selectedChannelId });
 
-  const wavBlob = encodeWAV([allData], audioContext.sampleRate);
-  const arrayBuffer = await wavBlob.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-
-  console.log('WAV size:', uint8Array.length);
-
-  try {
-    const response = await apiFetch('/api/recordings/upload', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'audio/wav',
-        'X-Channel-Id': selectedChannelId
-      },
-      body: uint8Array
-    });
-    const result = await response.json();
-    recordingStatus.textContent = 'Saved!';
-    loadRecordings();
-  } catch (e) {
-    console.error(e);
-    recordingStatus.textContent = 'Error: ' + e.message;
-  }
-
-  recordedBuffers = [];
+  mediaRecorder = null;
 });
 
 async function loadRecordings() {

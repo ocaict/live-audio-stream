@@ -46,6 +46,22 @@ async function uploadAudio(buffer, filename) {
   });
 }
 
+async function deleteAudio(publicId) {
+  if (!isConfigured) {
+    throw new Error('Cloudinary not configured');
+  }
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.destroy(publicId, { resource_type: 'raw' }, (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
 function isEnabled() {
   return isConfigured;
 }
@@ -54,6 +70,7 @@ configureCloudinary();
 
 module.exports = {
   uploadAudio,
+  deleteAudio,
   isEnabled,
   configureCloudinary
 };

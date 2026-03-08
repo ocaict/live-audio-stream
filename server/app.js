@@ -41,15 +41,15 @@ const io = new Server(server, {
 // Static files only if not in API-only mode
 if (!CONFIG.API_ONLY) {
   app.use(express.static(path.join(__dirname, '../public')));
-  
+
   app.get('/listen', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/listener/index.html'));
   });
-  
+
   app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin/index.html'));
   });
-  
+
   app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/listener/index.html'));
   });
@@ -81,7 +81,7 @@ const PORT = CONFIG.PORT;
   try {
     await initializeDatabase();
     ensureRecordingsDirectory();
-    
+
     server.listen(PORT, () => {
       console.log(`Radio server running on port ${PORT}`);
       console.log(`Mode: ${CONFIG.API_ONLY ? 'API-only' : 'Full-stack'}`);
@@ -103,4 +103,13 @@ process.on('SIGTERM', () => {
     console.log('Server closed');
     process.exit(0);
   });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Optional: Graceful shutdown if needed
 });

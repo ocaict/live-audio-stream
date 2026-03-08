@@ -1,66 +1,134 @@
-const { db: dbWrapper } = require('../config/database');
-
-function rowToObject(result) {
-  if (!result[0]) return [];
-  const cols = result[0].columns;
-  return result[0].values.map(values => {
-    const row = {};
-    cols.forEach((col, i) => row[col] = values[i]);
-    return row;
-  });
-}
+const { supabase: getSupabase } = require('../config/database');
 
 const RecordingModel = {
-  create(recording) {
-    dbWrapper.run(
-      `INSERT INTO recordings (id, filename, filepath, filesize, duration, channel_id, cloud_url, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [recording.id, recording.filename, recording.filepath, recording.filesize, recording.duration, recording.channel_id || null, recording.cloud_url || null, recording.created_at]
-    );
+  async create(recording) {
+    const { error } = await getSupabase()
+      .from('recordings')
+      .insert([{
+        id: recording.id,
+        filename: recording.filename,
+        filepath: recording.filepath,
+        filesize: recording.filesize,
+        duration: recording.duration,
+        channel_id: recording.channel_id || null,
+        cloud_url: recording.cloud_url || null,
+        created_at: recording.created_at || new Date().toISOString()
+      }]);
+
+    if (error) {
+      console.error('Error creating recording:', error);
+      throw error;
+    }
   },
 
-  findAll() {
-    const result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC');
-    return rowToObject(result);
+  async findAll() {
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching recordings:', error);
+      return [];
+    }
+    return data || [];
   },
 
-  findByChannelId(channelId) {
-    const result = dbWrapper.exec('SELECT * FROM recordings WHERE channel_id = ? ORDER BY created_at DESC', [channelId]);
-    return rowToObject(result);
+  async findByChannelId(channelId) {
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching recordings for channel ${channelId}:`, error);
+      return [];
+    }
+    return data || [];
   },
 
-  findLatestByChannelId(channelId) {
-    let result = dbWrapper.exec('SELECT * FROM recordings WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1', [channelId]);
-    let rows = rowToObject(result);
-    if (rows[0]) return rows[0];
+  async findLatestByChannelId(channelId) {
+    // Try channel specific first
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-    result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC LIMIT 1');
-    rows = rowToObject(result);
-    return rows[0] || null;
+    if (!error && data) return data;
+
+    // Fallback to any latest
+    return this.findLatest();
   },
 
-  findLatest() {
-    const result = dbWrapper.exec('SELECT * FROM recordings ORDER BY created_at DESC LIMIT 1');
-    const rows = rowToObject(result);
-    return rows[0] || null;
+  async findLatest() {
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      console.error('Error fetching latest recording:', error);
+      return null;
+    }
+    return data;
   },
 
-  findById(id) {
-    const result = dbWrapper.exec('SELECT * FROM recordings WHERE id = ?', [id]);
-    const rows = rowToObject(result);
-    return rows[0] || null;
+  async findById(id) {
+    const { data, error } = await getSupabase()
+      .from('recordings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      console.error(`Error finding recording ${id}:`, error);
+      return null;
+    }
+    return data;
   },
 
-  delete(id) {
-    dbWrapper.run('DELETE FROM recordings WHERE id = ?', [id]);
+  async delete(id) {
+    const { error } = await getSupabase()
+      .from('recordings')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error deleting recording ${id}:`, error);
+      throw error;
+    }
   },
 
-  updateFilesize(id, filesize) {
-    dbWrapper.run('UPDATE recordings SET filesize = ? WHERE id = ?', [filesize, id]);
+  async updateFilesize(id, filesize) {
+    const { error } = await getSupabase()
+      .from('recordings')
+      .update({ filesize })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating filesize for recording ${id}:`, error);
+      throw error;
+    }
   },
 
-  updateDuration(id, duration) {
-    dbWrapper.run('UPDATE recordings SET duration = ? WHERE id = ?', [duration, id]);
+  async updateDuration(id, duration) {
+    const { error } = await getSupabase()
+      .from('recordings')
+      .update({ duration })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating duration for recording ${id}:`, error);
+      throw error;
+    }
   }
 };
 

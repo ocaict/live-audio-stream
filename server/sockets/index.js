@@ -1,15 +1,39 @@
+const ChannelModel = require('../models/channel');
+const AuthService = require('../services/authService');
+const cookie = require('cookie');
+
 const webrtcService = require('../services/webrtcService');
 const recordingService = require('../services/recordingService');
-const ChannelModel = require('../models/channel');
 
 function setupSocketHandlers(io) {
+  // Authentication middleware
+  io.use((socket, next) => {
+    try {
+      const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+      const token = cookies.token;
+
+      if (token) {
+        const user = AuthService.verifyToken(token);
+        if (user) {
+          socket.user = user;
+        }
+      }
+      // We allow everyone to connect (public listeners), 
+      // but we will check socket.user for broadcaster-specific events.
+      next();
+    } catch (err) {
+      console.error('Socket authentication error:', err.message);
+      next();
+    }
+  });
+
   io.on('connection', (socket) => {
     let currentChannelId = null;
     let isBroadcaster = false;
 
     console.log('Client connected:', socket.id, socket.handshake.address);
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log('Client disconnected:', socket.id);
       if (currentChannelId) {
         if (isBroadcaster) {
@@ -19,7 +43,7 @@ function setupSocketHandlers(io) {
             });
           }
           webrtcService.stopBroadcast(currentChannelId);
-          ChannelModel.setLiveStatus(currentChannelId, false);
+          await ChannelModel.setLiveStatus(currentChannelId, false);
           io.to(currentChannelId).emit('channel-live', {
             channelId: currentChannelId,
             isLive: false
@@ -32,6 +56,12 @@ function setupSocketHandlers(io) {
 
     socket.on('join-channel', (data) => {
       const { channelId, role } = data;
+
+      if (role === 'broadcaster' && !socket.user) {
+        socket.emit('error', 'Authentication required to broadcast');
+        return;
+      }
+
       currentChannelId = channelId;
       isBroadcaster = role === 'broadcaster';
       socket.join(channelId);
@@ -79,7 +109,7 @@ function setupSocketHandlers(io) {
       }
     });
 
-    socket.on('broadcaster-ready', (data) => {
+    socket.on('broadcaster-ready', async (data) => {
       const channelId = data?.channelId;
       if (!channelId) {
         socket.emit('error', 'Channel ID required');
@@ -87,13 +117,11 @@ function setupSocketHandlers(io) {
       }
 
       webrtcService.startBroadcast(socket, channelId);
-      ChannelModel.setLiveStatus(channelId, true);
-
-      console.log(`>>> Emitting channel-live:true to room ${channelId}`);
-      io.to(channelId).emit('channel-live', { channelId, isLive: true });
+      await ChannelModel.setLiveStatus(channelId, true);
+      console.log(`Broadcaster ready on channel ${channelId}`);
     });
 
-    socket.on('stop-broadcasting', (data) => {
+    socket.on('stop-broadcasting', async (data) => {
       const channelId = data?.channelId || currentChannelId;
       if (!channelId) {
         socket.emit('error', 'No channel specified');
@@ -106,10 +134,8 @@ function setupSocketHandlers(io) {
       }
 
       webrtcService.stopBroadcast(channelId);
-      ChannelModel.setLiveStatus(channelId, false);
+      await ChannelModel.setLiveStatus(channelId, false);
 
-      console.log(`>>> Emitting channel-live:false to room ${channelId}`);
-      io.to(channelId).emit('channel-live', { channelId, isLive: false });
       console.log(`Broadcast stopped on channel ${channelId}`);
     });
 
@@ -193,8 +219,8 @@ function setupSocketHandlers(io) {
       }
     });
 
-    socket.on('get-channels', () => {
-      const channels = ChannelModel.findAll();
+    socket.on('get-channels', async () => {
+      const channels = await ChannelModel.findAll();
       const channelsWithStatus = channels.map(ch => ({
         ...ch,
         isLive: webrtcService.isChannelLive(ch.id),

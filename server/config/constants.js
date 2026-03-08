@@ -30,6 +30,10 @@ const CONFIG = {
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
   CLOUDINARY_ENABLED: process.env.CLOUDINARY_ENABLED === 'true',
   CLOUDINARY_FOLDER: process.env.CLOUDINARY_FOLDER || 'radio-recordings',
+
+  // Supabase Configuration
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_KEY: process.env.SUPABASE_KEY || '',
 };
 
 module.exports = CONFIG;

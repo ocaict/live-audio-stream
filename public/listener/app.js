@@ -49,15 +49,29 @@ function refreshUI() {
   const selectedOption = channelSelect.options[channelSelect.selectedIndex];
   const uiLive = selectedOption?.dataset?.live === 'true';
 
-  liveIndicator.textContent = uiLive ? '● Live' : '● Offline';
+  const statusLabel = liveIndicator.querySelector('.status-label');
+  if (statusLabel) {
+    statusLabel.textContent = uiLive ? 'Live' : 'Offline';
+  }
   liveIndicator.className = 'indicator ' + (uiLive ? 'live' : 'offline');
+
+  const btnIcon = listenBtn.querySelector('.btn-icon');
+  const btnText = listenBtn.querySelector('.text');
 
   if (State.intent) {
     listenBtn.classList.add('listening');
-    listenBtn.querySelector('.text').textContent = 'Stop';
+    if (btnText) btnText.textContent = 'Stop';
+    if (btnIcon) {
+      btnIcon.setAttribute('data-lucide', 'square');
+      lucide.createIcons();
+    }
   } else {
     listenBtn.classList.remove('listening');
-    listenBtn.querySelector('.text').textContent = 'Listen Live';
+    if (btnText) btnText.textContent = 'Listen Live';
+    if (btnIcon) {
+      btnIcon.setAttribute('data-lucide', 'play');
+      lucide.createIcons();
+    }
   }
 
   if (!State.intent) {
@@ -131,35 +145,40 @@ async function tryOfflinePlayback() {
     updateStatus('No channel selected', 'error');
     return;
   }
-  
+
   try {
     const res = await fetch(`/api/recordings/latest/${State.channelId}`);
-    
+
     if (!res.ok) {
-      updateStatus('Broadcast ended. No recording available.', 'error');
+      if (res.status === 404) {
+        updateStatus('Broadcast ended. No recording available.', 'error');
+      } else {
+        updateStatus('Server error. Retrying...', 'connecting');
+        setTimeout(tryOfflinePlayback, 2000);
+      }
       refreshUI();
       return;
     }
     const recording = await res.json();
-    
+
     if (!recording || !recording.id) {
       updateStatus('Broadcast ended. No recording available.', 'error');
       refreshUI();
       return;
     }
-    
+
     latestRecordingUrl = `/api/recordings/${recording.id}/stream`;
-    
+
     audioPlayer.pause();
     audioPlayer.srcObject = null;
     audioPlayer.removeAttribute('src');
     audioPlayer.load();
-    
+
     audioPlayer.volume = 1.0;
     audioPlayer.muted = false;
     audioPlayer.src = latestRecordingUrl;
     audioPlayer.loop = true;
-    
+
     const playPromise = audioPlayer.play();
     if (playPromise !== undefined) {
       playPromise.then(() => {
@@ -185,7 +204,7 @@ async function connectToBroadcast() {
     console.log('>>> connectToBroadcast skipped - already connecting');
     return;
   }
-  
+
   if (!State.channelId || !State.intent) {
     console.log('>>> connectToBroadcast skipped - no channelId or no intent');
     return;
@@ -233,6 +252,7 @@ async function connectToBroadcast() {
           State.commit('isStreaming', true);
           State.commit('isReconnecting', false);
           reconnectAttempts = 0;
+          initVisualizer(event.streams[0]);
         }).catch(e => {
           console.warn('Autoplay blocked');
           State.commit('isStreaming', true);
@@ -318,6 +338,7 @@ function stopListening() {
   State.commit('intent', false);
   State.commit('isStreaming', false);
   State.commit('isReconnecting', false);
+  stopVisualizer();
 
   if (peerConnection) {
     peerConnection.close();
@@ -356,7 +377,7 @@ socket.on('connect', async () => {
 
   if (State.intent && State.channelId) {
     socket.emit('join-channel', { channelId: State.channelId, role: 'listener' });
-    
+
     const channel = State.channels.find(c => String(c.id) === String(State.channelId));
     if (channel && channel.isLive) {
       connectToBroadcast();
@@ -397,9 +418,9 @@ socket.on('channel-live', (data) => {
   }
   lastChannelLiveEvent = eventKey;
   setTimeout(() => { lastChannelLiveEvent = null; }, 500);
-  
+
   const ch = State.channels.find(c => String(c.id) === String(data.channelId));
-  
+
   if (ch) {
     ch.isLive = data.isLive;
   } else {
@@ -435,7 +456,11 @@ socket.on('channel-live', (data) => {
 
 socket.on('listener-count', (data) => {
   if (String(State.channelId) === String(data.channelId)) {
-    listenerCountEl.textContent = `Listeners: ${data.count}`;
+    // Keep icons, update text
+    const icon = listenerCountEl.querySelector('i, svg');
+    listenerCountEl.innerHTML = '';
+    if (icon) listenerCountEl.appendChild(icon);
+    listenerCountEl.appendChild(document.createTextNode(` ${data.count}`));
   }
 
   const channel = State.channels.find(c => c.id === data.channelId);
@@ -495,5 +520,69 @@ socket.on('no-broadcast', () => {
     }
   }
 });
+
+/* Visualizer Logic */
+let visualizerContext = null;
+let animationId = null;
+
+function initVisualizer(stream) {
+  if (!stream) return;
+
+  const canvas = document.getElementById('visualizer');
+  const ctx = canvas.getContext('2d');
+
+  // Set canvas size
+  canvas.width = 220;
+  canvas.height = 220;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioCtx.createMediaStreamSource(stream);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
+
+  source.connect(analyser);
+
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function draw() {
+    animationId = requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 60;
+
+    ctx.strokeStyle = '#00f2ea';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for (let i = 0; i < bufferLength; i++) {
+      const value = dataArray[i] / 255;
+      const barHeight = value * 40;
+
+      const angle = (i * 2 * Math.PI) / bufferLength;
+      const x1 = centerX + Math.cos(angle) * radius;
+      const y1 = centerY + Math.sin(angle) * radius;
+      const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+      const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+  }
+
+  draw();
+}
+
+function stopVisualizer() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+}
 
 loadChannels();

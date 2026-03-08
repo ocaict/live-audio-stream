@@ -10,9 +10,9 @@ function generateSlug(name) {
 }
 
 const channelController = {
-  list(req, res) {
+  async list(req, res) {
     try {
-      const channels = ChannelModel.findAll();
+      const channels = await ChannelModel.findAll();
       const channelsWithStatus = channels.map(ch => ({
         ...ch,
         isLive: webrtcService.isChannelLive(ch.id),
@@ -24,9 +24,9 @@ const channelController = {
     }
   },
 
-  getById(req, res) {
+  async getById(req, res) {
     try {
-      const channel = ChannelModel.findById(req.params.id);
+      const channel = await ChannelModel.findById(req.params.id);
       if (!channel) {
         return res.status(404).json({ error: 'Channel not found' });
       }
@@ -38,9 +38,9 @@ const channelController = {
     }
   },
 
-  getBySlug(req, res) {
+  async getBySlug(req, res) {
     try {
-      const channel = ChannelModel.findBySlug(req.params.slug);
+      const channel = await ChannelModel.findBySlug(req.params.slug);
       if (!channel) {
         return res.status(404).json({ error: 'Channel not found' });
       }
@@ -52,9 +52,9 @@ const channelController = {
     }
   },
 
-  listMyChannels(req, res) {
+  async listMyChannels(req, res) {
     try {
-      const channels = ChannelModel.findByAdminId(req.user.id);
+      const channels = await ChannelModel.findByAdminId(req.user.id);
       const channelsWithStatus = channels.map(ch => ({
         ...ch,
         isLive: webrtcService.isChannelLive(ch.id),
@@ -66,7 +66,7 @@ const channelController = {
     }
   },
 
-  create(req, res) {
+  async create(req, res) {
     try {
       const { name, description, color } = req.body;
 
@@ -75,12 +75,12 @@ const channelController = {
       }
 
       const slug = generateSlug(name);
-      const existingChannel = ChannelModel.findBySlug(slug);
+      const existingChannel = await ChannelModel.findBySlug(slug);
       if (existingChannel) {
         return res.status(400).json({ error: 'Channel with similar name already exists' });
       }
 
-      const channel = ChannelModel.create({
+      const channel = await ChannelModel.create({
         name: name.trim(),
         slug,
         description: description || '',
@@ -94,10 +94,10 @@ const channelController = {
     }
   },
 
-  update(req, res) {
+  async update(req, res) {
     try {
-      const channel = ChannelModel.findById(req.params.id);
-      
+      const channel = await ChannelModel.findById(req.params.id);
+
       if (!channel) {
         return res.status(404).json({ error: 'Channel not found' });
       }
@@ -108,10 +108,10 @@ const channelController = {
 
       const { name, description, color } = req.body;
       const updates = {};
-      
+
       if (name) {
         const newSlug = generateSlug(name);
-        const existing = ChannelModel.findBySlug(newSlug);
+        const existing = await ChannelModel.findBySlug(newSlug);
         if (existing && existing.id !== channel.id) {
           return res.status(400).json({ error: 'Channel with similar name already exists' });
         }
@@ -121,17 +121,17 @@ const channelController = {
       if (description !== undefined) updates.description = description;
       if (color) updates.color = color;
 
-      const updated = ChannelModel.update(channel.id, updates);
+      const updated = await ChannelModel.update(channel.id, updates);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   },
 
-  delete(req, res) {
+  async delete(req, res) {
     try {
-      const channel = ChannelModel.findById(req.params.id);
-      
+      const channel = await ChannelModel.findById(req.params.id);
+
       if (!channel) {
         return res.status(404).json({ error: 'Channel not found' });
       }
@@ -144,7 +144,7 @@ const channelController = {
         return res.status(400).json({ error: 'Cannot delete channel while live. Stop broadcast first.' });
       }
 
-      ChannelModel.delete(channel.id);
+      await ChannelModel.delete(channel.id);
       res.json({ message: 'Channel deleted successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });

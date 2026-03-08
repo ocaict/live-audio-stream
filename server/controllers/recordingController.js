@@ -7,9 +7,9 @@ const cloudinaryService = require('../services/cloudinaryService');
 const CONFIG = require('../config/constants');
 
 const recordingController = {
-  list(req, res) {
+  async list(req, res) {
     try {
-      const recordings = RecordingModel.findAll();
+      const recordings = await RecordingModel.findAll();
       res.json(recordings);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -72,7 +72,7 @@ const recordingController = {
         created_at: new Date().toISOString()
       };
 
-      RecordingModel.create(recording);
+      await RecordingModel.create(recording);
       res.json({ id, filename, filesize, url: cloudUrl });
     } catch (error) {
       console.error('Upload error:', error);
@@ -80,10 +80,10 @@ const recordingController = {
     }
   },
 
-  stream(req, res) {
+  async stream(req, res) {
     try {
       const { id } = req.params;
-      const recording = RecordingModel.findById(id);
+      const recording = await RecordingModel.findById(id);
 
       if (!recording) {
         return res.status(404).json({ error: 'Recording not found' });
@@ -145,10 +145,10 @@ const recordingController = {
     }
   },
 
-  download(req, res) {
+  async download(req, res) {
     try {
       const { id } = req.params;
-      const recording = RecordingModel.findById(id);
+      const recording = await RecordingModel.findById(id);
 
       if (!recording) {
         return res.status(404).json({ error: 'Recording not found' });
@@ -170,36 +170,44 @@ const recordingController = {
     }
   },
 
-  delete(req, res) {
+  async delete(req, res) {
     try {
       const { id } = req.params;
-      const recording = RecordingModel.findById(id);
+      const recording = await RecordingModel.findById(id);
 
       if (!recording) {
         return res.status(404).json({ error: 'Recording not found' });
       }
 
       // Delete from Cloudinary if was uploaded there
-      if (recording.cloud_url && cloudinaryService.isEnabled()) {
-        // Cloudinary deletion would require additional SDK call
-        console.log('Recording was on Cloudinary:', recording.cloud_url);
+      if (recording.cloud_url && cloudinaryService.isEnabled() && recording.filepath) {
+        try {
+          console.log('Deleting from Cloudinary:', recording.filepath);
+          await cloudinaryService.deleteAudio(recording.filepath);
+        } catch (cloudError) {
+          console.error('Cloudinary deletion failed:', cloudError.message);
+        }
       }
 
       // Delete local file if exists
       if (recording.filepath && !recording.cloud_url && fs.existsSync(recording.filepath)) {
-        fs.unlinkSync(recording.filepath);
+        try {
+          fs.unlinkSync(recording.filepath);
+        } catch (localError) {
+          console.error('Local file deletion failed:', localError.message);
+        }
       }
 
-      RecordingModel.delete(id);
+      await RecordingModel.delete(id);
       res.json({ message: 'Recording deleted successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   },
 
-  getLatest(req, res) {
+  async getLatest(req, res) {
     try {
-      const recording = RecordingModel.findLatest();
+      const recording = await RecordingModel.findLatest();
       if (!recording) {
         return res.status(404).json({ error: 'No recordings found' });
       }
@@ -209,10 +217,10 @@ const recordingController = {
     }
   },
 
-  getLatestByChannel(req, res) {
+  async getLatestByChannel(req, res) {
     try {
       const { channelId } = req.params;
-      const recording = RecordingModel.findLatestByChannelId(channelId);
+      const recording = await RecordingModel.findLatestByChannelId(channelId);
       if (!recording) {
         return res.status(404).json({ error: 'No recordings found for this channel' });
       }

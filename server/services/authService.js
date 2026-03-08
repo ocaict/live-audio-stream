@@ -5,7 +5,7 @@ const CONFIG = require('../config/constants');
 
 const AuthService = {
   async login(username, password) {
-    const admin = AdminModel.findByUsername(username);
+    const admin = await AdminModel.findByUsername(username);
     if (!admin) {
       throw new Error('Invalid credentials');
     }
