@@ -272,6 +272,29 @@ class AutoDJService extends EventEmitter {
         return session.queue[nextIdx] || null;
     }
 
+    getSessionMetadata(channelId) {
+        const session = this.sessions.get(channelId);
+        if (!session || !session.isRunning) return null;
+
+        const currentTrack = this.getCurrentTrack(channelId);
+        const nextTrack = this.getNextTrack(channelId);
+
+        if (!currentTrack) return null;
+
+        return {
+            channelId,
+            title: currentTrack.title,
+            category: currentTrack.category,
+            tags: currentTrack.tags,
+            index: Math.max(1, session.currentIndex),
+            total: session.queue.length,
+            next: nextTrack ? {
+                title: nextTrack.title,
+                category: nextTrack.category
+            } : null
+        };
+    }
+
     skipTrack(channelId) {
         const session = this.sessions.get(channelId);
         if (!session || !session.isRunning) return;

@@ -82,20 +82,10 @@ function setupSocketHandlers(io) {
       // Auto-DJ: On by default for listeners joining an inactive station
       if (role === 'listener') {
         if (autoDJService.isRunning(channelId)) {
-          const track = autoDJService.getCurrentTrack(channelId);
-          const nextTrack = autoDJService.getNextTrack(channelId);
+          const meta = autoDJService.getSessionMetadata(channelId);
           socket.emit('autodj-started', { channelId });
-          if (track) {
-            socket.emit('autodj-track-changed', {
-              channelId,
-              title: track.title,
-              category: track.category,
-              tags: track.tags,
-              next: nextTrack ? {
-                title: nextTrack.title,
-                category: nextTrack.category
-              } : null
-            });
+          if (meta) {
+            socket.emit('autodj-track-changed', meta);
           }
         } else if (!webrtcService.isChannelLive(channelId)) {
           // If station is dead air, bring it to life
@@ -360,7 +350,7 @@ function setupSocketHandlers(io) {
       socket.emit('autodj-status', {
         channelId,
         isRunning: autoDJService.isRunning(channelId),
-        currentTrack: autoDJService.getCurrentTrack(channelId)
+        currentTrack: autoDJService.getSessionMetadata(channelId)
       });
     });
 
