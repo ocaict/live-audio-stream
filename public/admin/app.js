@@ -1199,12 +1199,11 @@ async function playRecording(id) {
     document.querySelector('.recordings-section').appendChild(player);
   }
 
-  try {
-    const res = await apiFetch(`/api/recordings/${id}/stream`);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    player.innerHTML = `<audio controls autoplay src="${url}"></audio>`;
-  } catch (e) { console.error(e); }
+  // Use the direct API URL for the audio source. 
+  // This avoids CORS issues with FETCH when redirected to Cloudinary,
+  // and allows for proper streaming/seeking.
+  const streamUrl = `${API_URL}/api/recordings/${id}/stream`;
+  player.innerHTML = `<audio controls autoplay src="${streamUrl}"></audio>`;
 }
 
 function formatSize(bytes) {
