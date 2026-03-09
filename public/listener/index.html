@@ -42,6 +42,10 @@
           <i data-lucide="calendar"></i>
           <span>Schedule</span>
         </button>
+        <button id="view-library-btn" class="header-btn" title="Listen to Past Shows">
+          <i data-lucide="library"></i>
+          <span>Library</span>
+        </button>
         <div id="live-indicator" class="indicator offline">
           <span class="dot"></span>
           <span class="status-label">Offline</span>
@@ -155,6 +159,36 @@
         <div class="schedule-loader">Loading station schedule...</div>
       </div>
       <div class="overlay-footer">Times are shown in your local timezone.</div>
+    </div>
+  </div>
+
+  <!-- Recordings Library Overlay -->
+  <div id="library-overlay" class="overlay hidden">
+    <div class="overlay-content library-card glass-card">
+      <div class="overlay-header">
+        <h2><i data-lucide="library"></i> Past Broadcasts</h2>
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input type="text" id="library-search" placeholder="Search archive..." autocomplete="off">
+        </div>
+        <button id="close-library-btn" class="close-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- Mini Player for Library -->
+      <div id="library-player-container" class="library-player hidden">
+        <div class="lp-info">
+          <div class="lp-label"><i data-lucide="play-circle"></i> NOW PLAYING FROM ARCHIVE</div>
+          <div id="lp-title" class="lp-title">Select a show to listen</div>
+        </div>
+        <div class="lp-controls">
+          <audio id="archive-audio-player" controls class="custom-audio"></audio>
+        </div>
+      </div>
+
+      <div id="library-container" class="recording-grid">
+        <div id="archive-loader" class="schedule-loader">Opening archive vaults...</div>
+      </div>
+      <div class="overlay-footer">Enjoy our premium archive of past live sets and shows.</div>
     </div>
   </div>
 

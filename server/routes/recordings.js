@@ -34,6 +34,7 @@ router.post('/upload', authenticateToken, (req, res, next) => {
 }, requireChannelOwnership, uploadValidation, recordingController.upload);
 router.get('/latest/:channelId', recordingController.getLatestByChannel);
 router.get('/latest', recordingController.getLatest);
+router.get('/channel/:channelId/public', recordingController.listByChannelPublic); // Public access
 router.get('/:id/stream', recordingIdValidation, recordingController.stream);
 router.get('/:id/download', authenticateToken, requireRecordingOwnership, recordingIdValidation, recordingController.download);
 router.post('/:id/promote', authenticateToken, requireRecordingOwnership, recordingIdValidation, recordingController.promoteToMedia);

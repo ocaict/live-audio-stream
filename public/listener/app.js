@@ -139,6 +139,18 @@ const npcCategory = document.getElementById('npc-category');
 const npcNextTitle = document.getElementById('npc-next-title'); // Added this
 const npcIcon = document.querySelector('.npc-icon i');
 
+// Library Overlay DOM
+const viewLibraryBtn = document.getElementById('view-library-btn');
+const closeLibraryBtn = document.getElementById('close-library-btn');
+const libraryOverlay = document.getElementById('library-overlay');
+const libraryContainer = document.getElementById('library-container');
+const archiveAudioPlayer = document.getElementById('archive-audio-player');
+const libraryPlayerContainer = document.getElementById('library-player-container');
+const lpTitle = document.getElementById('lp-title');
+const librarySearch = document.getElementById('library-search');
+
+let allRecordings = []; // For filtering
+
 // Load saved username
 if (chatUsernameInput) {
   chatUsernameInput.value = localStorage.getItem('chatUsername') || '';
@@ -308,6 +320,13 @@ function renderChannelSelector() {
 }
 
 async function startListening() {
+  // If moving to live, pause archive
+  if (archiveAudioPlayer) archiveAudioPlayer.pause();
+  if (libraryPlayerContainer) libraryPlayerContainer.classList.add('hidden');
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
   if (State.intent) {
     stopListening();
     return;
@@ -1180,3 +1199,123 @@ if (scheduleOverlay) {
     if (e.target === scheduleOverlay) toggleSchedule(false);
   });
 }
+
+// --- BROADCAST LIBRARY ---
+
+async function fetchLibrary(channelId) {
+  if (!channelId) return;
+
+  try {
+    libraryContainer.innerHTML = '<div id="archive-loader" class="schedule-loader">Opening archive vaults...</div>';
+    const res = await fetch(`/api/recordings/channel/${channelId}/public`);
+    if (!res.ok) throw new Error('Failed to load archive');
+
+    allRecordings = await res.json();
+    renderLibrary(allRecordings);
+  } catch (e) {
+    console.error('[Library] Error:', e);
+    libraryContainer.innerHTML = '<div class="schedule-loader">Failed to load archive. Try again soon.</div>';
+  }
+}
+
+function renderLibrary(recordings) {
+  if (!recordings || recordings.length === 0) {
+    libraryContainer.innerHTML = '<div class="schedule-loader">No past broadcasts found in the vaults yet.</div>';
+    return;
+  }
+
+  let html = '';
+  recordings.forEach(rec => {
+    const dateStr = new Date(rec.created_at).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    const sizeMB = (rec.filesize / (1024 * 1024)).toFixed(1);
+
+    html += `
+      <div class="recording-item" onclick="playFromArchive('${rec.id}', '${rec.title.replace(/'/g, "\\'")}')">
+        <div class="ri-play-overlay">
+          <div class="play-icon-circle"><i data-lucide="play"></i></div>
+        </div>
+        <div class="ri-date">${dateStr}</div>
+        <div class="ri-title">${rec.title || 'Untitled Broadcast'}</div>
+        <div class="ri-meta">
+          <span><i data-lucide="hard-drive"></i> ${sizeMB} MB</span>
+          <span><i data-lucide="radio"></i> Master Copy</span>
+        </div>
+      </div>
+    `;
+  });
+
+  libraryContainer.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
+function toggleLibrary(show) {
+  if (show) {
+    libraryOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    fetchLibrary(State.channelId);
+  } else {
+    libraryOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+function playFromArchive(id, title) {
+  if (!archiveAudioPlayer) return;
+
+  // Stop live audio context if it's active
+  if (audioCtx && audioCtx.state === 'running') {
+    audioCtx.suspend();
+  }
+
+  // Update library player UI
+  lpTitle.textContent = title;
+  libraryPlayerContainer.classList.remove('hidden');
+
+  // Set source and play
+  archiveAudioPlayer.src = `/api/recordings/${id}/stream`;
+  archiveAudioPlayer.load();
+  archiveAudioPlayer.play().catch(e => console.error('[Archive] Playback error:', e));
+
+  console.log(`[Archive] Streaming: ${title}`);
+}
+
+// Ensure live audio resumes if listener clicks "Tune In" again
+if (tuneInBtn) {
+  tuneInBtn.addEventListener('click', () => {
+    if (archiveAudioPlayer) archiveAudioPlayer.pause();
+    // (Other tune-in logic already exists in the file)
+  });
+}
+
+if (viewLibraryBtn) {
+  viewLibraryBtn.addEventListener('click', () => toggleLibrary(true));
+}
+if (closeLibraryBtn) {
+  closeLibraryBtn.addEventListener('click', () => {
+    toggleLibrary(false);
+    // Maybe keep playing in background? Or stop? 
+    // Broadcasters usually prefer to keep it playing unless they close the station.
+  });
+}
+if (libraryOverlay) {
+  libraryOverlay.addEventListener('click', (e) => {
+    if (e.target === libraryOverlay) toggleLibrary(false);
+  });
+}
+
+if (librarySearch) {
+  librarySearch.addEventListener('input', (e) => {
+    const search = e.target.value.toLowerCase();
+    const filtered = allRecordings.filter(rec =>
+      (rec.title && rec.title.toLowerCase().includes(search)) ||
+      (rec.description && rec.description.toLowerCase().includes(search)) ||
+      (rec.tags && rec.tags.some(t => t.toLowerCase().includes(search)))
+    );
+    renderLibrary(filtered);
+  });
+}
+
+// Global exposure for onclick
+window.playFromArchive = playFromArchive;

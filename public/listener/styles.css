@@ -1067,3 +1067,181 @@ footer {
   text-overflow: ellipsis;
   max-width: 180px;
 }
+
+/* Library (Archive) Library Styles */
+.recording-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.recording-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.recording-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-5px);
+  border-color: var(--primary);
+}
+
+.ri-date {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ri-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.3;
+}
+
+.ri-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.ri-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ri-meta i {
+  width: 14px;
+  height: 14px;
+}
+
+.ri-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 45, 85, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.recording-item:hover .ri-play-overlay {
+  opacity: 1;
+}
+
+.play-icon-circle {
+  width: 50px;
+  height: 50px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 10px 20px rgba(255, 45, 85, 0.3);
+  transform: scale(0.8);
+  transition: transform 0.3s ease;
+}
+
+.recording-item:hover .play-icon-circle {
+  transform: scale(1);
+}
+
+/* Library Player Bar */
+.library-player {
+  background: rgba(255, 45, 85, 0.08);
+  border-bottom: 1px solid rgba(255, 45, 85, 0.2);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  transition: all 0.5s ease;
+}
+
+.library-player.hidden {
+  display: none;
+}
+
+.lp-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.lp-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.custom-audio {
+  width: 100%;
+  height: 40px;
+  filter: invert(100%) hue-rotate(180deg) brightness(1.5);
+}
+
+/* Search Box in Overlays */
+.search-box {
+  flex: 1;
+  max-width: 300px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  margin: 0 20px;
+  transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 15px rgba(255, 45, 85, 0.1);
+}
+
+.search-box i {
+  color: var(--text-dim);
+  width: 18px;
+  height: 18px;
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 10px;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.search-box input:focus {
+  outline: none;
+}

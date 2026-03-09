@@ -298,6 +298,18 @@ const recordingController = {
       console.error('[RecordingController] Promotion failed:', error);
       res.status(500).json({ error: error.message });
     }
+  },
+
+  async listByChannelPublic(req, res) {
+    try {
+      const { channelId } = req.params;
+      if (!channelId) return res.status(400).json({ error: 'Channel ID required' });
+      const recordings = await RecordingModel.findByChannelId(channelId);
+      res.json(recordings);
+    } catch (error) {
+      console.error('[RecordingController] Public list error:', error);
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
