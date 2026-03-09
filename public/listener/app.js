@@ -14,6 +14,11 @@ let rtcGain = null;
 let currentActiveSource = null; // 'rtc', 'dj'
 const SOURCE_FADE_MS = 1000; // 1 second crossfade between sources
 
+// Auto-DJ State
+let djIsActive = false;
+const trackStates = new Map();
+let currentTrackId = null;
+
 const State = {
   intent: localStorage.getItem('isListeningIntent') === 'true',
   channelId: localStorage.getItem('lastChannelId'),
@@ -37,6 +42,7 @@ const State = {
 };
 
 function initMasterAudio() {
+  if (!State.intent) return; // Don't touch audio until user says so
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
@@ -46,7 +52,9 @@ function initMasterAudio() {
     rtcGain = audioCtx.createGain();
     rtcGain.connect(masterGain);
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(e => console.warn('[Audio] Resume failed (Autoplay):', e));
+  }
 }
 
 function transitionToSource(type) {
@@ -760,26 +768,19 @@ loadRTCConfig();
 // =============================================
 // AUTO-DJ LISTENER: PCM Audio Decoder with Crossfading
 // =============================================
-let djAudioCtx = null;
-let djIsActive = false;
-
-// We now track the playback cursor independently per track
-// so we can overlap (crossfade) them.
-const trackStates = new Map();
-let currentTrackId = null;
-
 const DJ_SAMPLE_RATE = 44100;
 const DJ_CHANNELS = 1;
 const CROSSFADE_DURATION = 3.0; // 3 seconds overlap
 
 function initDJAudio() {
+  if (!State.intent) return;
   initMasterAudio();
   djIsActive = true;
   transitionToSource('dj');
 }
 
 function scheduleChunk(rawBuffer, trackId) {
-  if (!audioCtx) return;
+  if (!audioCtx || !State.intent) return;
 
   // Initialize track state if this is a new track
   if (!trackStates.has(trackId)) {
@@ -787,10 +788,10 @@ function scheduleChunk(rawBuffer, trackId) {
     gainNode.connect(masterGain);
 
     // Start silent, we will fade in
-    gainNode.gain.setValueAtTime(0, djAudioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
 
     trackStates.set(trackId, {
-      nextStartTime: djAudioCtx.currentTime + 0.1, // Slight buffer
+      nextStartTime: audioCtx.currentTime + 0.1, // Slight buffer
       gainNode: gainNode,
       fadingIn: false
     });
@@ -798,7 +799,7 @@ function scheduleChunk(rawBuffer, trackId) {
     // If there is an existing track playing, tell it to fade out
     if (currentTrackId && currentTrackId !== trackId && trackStates.has(currentTrackId)) {
       const oldState = trackStates.get(currentTrackId);
-      const currTime = djAudioCtx.currentTime;
+      const currTime = audioCtx.currentTime;
 
       // Stop previous track's fade-in if it was still happening
       oldState.gainNode.gain.cancelScheduledValues(currTime);
@@ -821,7 +822,7 @@ function scheduleChunk(rawBuffer, trackId) {
 
   // Crossfade Trigger: Fade in the new track
   if (!state.fadingIn) {
-    const currTime = djAudioCtx.currentTime;
+    const currTime = audioCtx.currentTime;
     state.gainNode.gain.linearRampToValueAtTime(1.0, currTime + CROSSFADE_DURATION);
     state.fadingIn = true;
   }
@@ -833,16 +834,16 @@ function scheduleChunk(rawBuffer, trackId) {
     float32[i] = int16[i] / 32768.0;
   }
 
-  const audioBuffer = djAudioCtx.createBuffer(DJ_CHANNELS, float32.length, DJ_SAMPLE_RATE);
+  const audioBuffer = audioCtx.createBuffer(DJ_CHANNELS, float32.length, DJ_SAMPLE_RATE);
   audioBuffer.copyToChannel(float32, 0);
 
-  const source = djAudioCtx.createBufferSource();
+  const source = audioCtx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(state.gainNode);
 
   // Schedule it gaplessly for THIS track
   const duration = audioBuffer.duration;
-  const currentTime = djAudioCtx.currentTime;
+  const currentTime = audioCtx.currentTime;
   const startAt = Math.max(state.nextStartTime, currentTime + 0.05);
 
   source.start(startAt);
@@ -850,10 +851,6 @@ function scheduleChunk(rawBuffer, trackId) {
 }
 
 function stopDJAudio() {
-  if (djAudioCtx) {
-    djAudioCtx.close();
-    djAudioCtx = null;
-  }
   trackStates.clear();
   currentTrackId = null;
   djIsActive = false;
