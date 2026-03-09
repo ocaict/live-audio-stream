@@ -1681,3 +1681,31 @@ body.broadcasting-live .clock-indicator {
         transform: scale(1);
     }
 }
+/* Timezone Indicator for Scheduling */
+.timezone-indicator {
+  background: var(--card-nested);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tz-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.tz-label {
+  color: var(--text-dim);
+}
+
+.tz-value {
+  font-weight: 600;
+  color: var(--success);
+  font-family: monospace;
+}

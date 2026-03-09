@@ -113,6 +113,8 @@ const studioDateEl = document.getElementById('studio-date');
 const broadcastDurationEl = document.getElementById('broadcast-duration');
 const onAirTimerContainer = document.getElementById('on-air-timer');
 const clockOnAirIndicator = document.getElementById('clock-on-air-indicator');
+const utcTimeDisplay = document.getElementById('utc-time-display');
+const localTimeDisplay = document.getElementById('local-time-display');
 
 let pendingCallers = [];
 let activeCall = null; // { socketId, username, pc, streamNode, gainNode }
@@ -1968,6 +1970,7 @@ if (addScheduleBtn) {
       return;
     }
     scheduleModal.classList.remove('hidden');
+    updateStudioClock(); // Update times immediately
   });
 }
 
@@ -2244,6 +2247,20 @@ function updateStudioClock() {
 
     broadcastDurationEl.textContent =
       `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  // Update Modal Timezone indicators if open
+  if (scheduleModal && !scheduleModal.classList.contains('hidden')) {
+    if (utcTimeDisplay) {
+      utcTimeDisplay.textContent = now.getUTCHours().toString().padStart(2, '0') + ':' +
+        now.getUTCMinutes().toString().padStart(2, '0') + ':' +
+        now.getUTCSeconds().toString().padStart(2, '0');
+    }
+    if (localTimeDisplay) {
+      localTimeDisplay.textContent = now.getHours().toString().padStart(2, '0') + ':' +
+        now.getMinutes().toString().padStart(2, '0') + ':' +
+        now.getUTCSeconds().toString().padStart(2, '0');
+    }
   }
 }
 

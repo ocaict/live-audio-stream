@@ -61,6 +61,16 @@
         <button id="close-schedule-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
       </div>
       <div class="modal-body">
+        <div id="timezone-indicator" class="timezone-indicator">
+          <div class="tz-item">
+            <span class="tz-label">Server (UTC) Time:</span>
+            <span id="utc-time-display" class="tz-value">--:--</span>
+          </div>
+          <div class="tz-item">
+            <span class="tz-label">Your Local Time:</span>
+            <span id="local-time-display" class="tz-value">--:--</span>
+          </div>
+        </div>
         <form id="schedule-form">
           <div class="field">
             <label>Select Playlist</label>
