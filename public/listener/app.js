@@ -802,10 +802,19 @@ function stopDJAudio() {
 socket.on('autodj-started', ({ channelId }) => {
   if (channelId !== State.channelId) return;
   console.log('[AutoDJ] Auto-DJ started on this channel');
+
+  // Stop any offline recording that is currently playing
+  if (audioPlayer) {
+    audioPlayer.pause();
+    audioPlayer.src = '';
+    audioPlayer.srcObject = null;
+    audioPlayer.removeAttribute('src');
+    audioPlayer.load();
+  }
+
   djIsActive = true;
   initDJAudio();
   updateStatus('📻 Auto-DJ is live — enjoy the music!', 'live');
-  // Pulse the visualizer ring
   if (pulseRing) pulseRing.style.display = 'block';
 });
 
@@ -847,10 +856,13 @@ socket.on('autodj-stopped', ({ channelId, reason }) => {
   if (reason === 'broadcaster_took_over') {
     updateStatus('🎙️ Live broadcast resumed', 'live');
   } else {
-    updateStatus('Auto-DJ ended. Waiting for broadcast...', 'normal');
+    // Fall back to offline recording if one exists
+    updateStatus('Auto-DJ ended. Loading last recording...', 'connecting');
     if (pulseRing) pulseRing.style.display = 'none';
+    tryOfflinePlayback();
   }
 });
+
 
 socket.on('autodj-no-media', ({ channelId }) => {
   if (channelId !== State.channelId) return;
