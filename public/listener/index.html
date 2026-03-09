@@ -37,9 +37,15 @@
         <i data-lucide="radio" class="logo-icon"></i>
         <span>OcaTech-Live</span>
       </div>
-      <div id="live-indicator" class="indicator offline">
-        <span class="dot"></span>
-        <span class="status-label">Offline</span>
+      <div class="header-actions">
+        <button id="view-schedule-btn" class="header-btn" title="View Station Schedule">
+          <i data-lucide="calendar"></i>
+          <span>Schedule</span>
+        </button>
+        <div id="live-indicator" class="indicator offline">
+          <span class="dot"></span>
+          <span class="status-label">Offline</span>
+        </div>
       </div>
     </header>
 
@@ -120,6 +126,32 @@
     <footer>
       <p>Powered by Advanced WebRTC • © 2026 OcaTech</p>
     </footer>
+  </div>
+
+  <!-- Now Playing Overlay Card -->
+  <div id="now-playing-card" class="now-playing-card hidden">
+    <div class="npc-icon">
+      <i data-lucide="music"></i>
+    </div>
+    <div class="npc-content">
+      <div class="npc-label">NOW PLAYING</div>
+      <div id="npc-title" class="npc-title">Track Title</div>
+      <div id="npc-category" class="npc-category">Category</div>
+    </div>
+  </div>
+
+  <!-- Station Schedule Overlay -->
+  <div id="schedule-overlay" class="overlay hidden">
+    <div class="overlay-content schedule-card glass-card">
+      <div class="overlay-header">
+        <h2><i data-lucide="calendar"></i> Station Timetable</h2>
+        <button id="close-schedule-btn" class="close-btn"><i data-lucide="x"></i></button>
+      </div>
+      <div id="schedule-container" class="schedule-grid">
+        <div class="schedule-loader">Loading station schedule...</div>
+      </div>
+      <div class="overlay-footer">Times are shown in your local timezone.</div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

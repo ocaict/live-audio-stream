@@ -3,10 +3,7 @@ const router = express.Router();
 const ScheduleModel = require('../models/schedule');
 const { authenticateToken } = require('../middleware/auth');
 
-// All routes here should be protected
-router.use(authenticateToken);
-
-// Get all schedules for a channel
+// Get all schedules for a channel (Public)
 router.get('/channel/:channelId', async (req, res) => {
     try {
         const schedules = await ScheduleModel.findByChannelId(req.params.channelId);
@@ -15,6 +12,9 @@ router.get('/channel/:channelId', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Admin/Moderator routes below are protected
+router.use(authenticateToken);
 
 // Create a new schedule slot
 router.post('/', async (req, res) => {

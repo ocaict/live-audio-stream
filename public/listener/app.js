@@ -124,12 +124,19 @@ let callState = 'idle'; // 'idle', 'requesting', 'accepted', 'connected'
 let callPC = null;
 let callStream = null;
 
-// Chat UI
-const chatMessages = document.getElementById('chat-messages');
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const chatUsernameInput = document.getElementById('chat-username');
 const sendBtn = document.getElementById('send-btn');
+
+// Schedule Overlay DOM
+const viewScheduleBtn = document.getElementById('view-schedule-btn');
+const closeScheduleBtn = document.getElementById('close-schedule-btn');
+const scheduleOverlay = document.getElementById('schedule-overlay');
+const scheduleContainer = document.getElementById('schedule-container');
+
+// Now Playing Card DOM
+const nowPlayingCard = document.getElementById('now-playing-card');
+const npcTitle = document.getElementById('npc-title');
+const npcCategory = document.getElementById('npc-category');
+const npcIcon = document.querySelector('.npc-icon i');
 
 // Load saved username
 if (chatUsernameInput) {
@@ -924,7 +931,10 @@ socket.on('autodj-track-changed', (meta) => {
   if (meta.channelId !== State.channelId) return;
   console.log(`[AutoDJ] Now playing: "${meta.title}"(${meta.category})`);
 
-  // Update the UI status bar with the current track
+  // Update dynamic overlay card
+  showNowPlaying(meta);
+
+  // Update original ticker if user prefers both
   const nowPlayingEl = document.getElementById('now-playing-bar');
   if (nowPlayingEl) {
     const categoryEmoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' };
@@ -934,6 +944,28 @@ socket.on('autodj-track-changed', (meta) => {
   }
   updateStatus(`📻 Auto-DJ: ${meta.title}`, 'live');
 });
+
+let npcTimeout = null;
+function showNowPlaying(meta) {
+  if (!nowPlayingCard) return;
+
+  npcTitle.textContent = meta.title;
+  npcCategory.textContent = meta.category;
+
+  // Icon mapping
+  const icons = { music: 'music', show: 'mic-2', jingle: 'sparkles', ad: 'megaphone' };
+  if (npcIcon && window.lucide) {
+    npcIcon.setAttribute('data-lucide', icons[meta.category] || 'music');
+    lucide.createIcons();
+  }
+
+  nowPlayingCard.classList.remove('hidden');
+
+  if (npcTimeout) clearTimeout(npcTimeout);
+  npcTimeout = setTimeout(() => {
+    nowPlayingCard.classList.add('hidden');
+  }, 10000); // Show for 10 seconds
+}
 
 socket.on('autodj-stopped', ({ channelId, reason }) => {
   if (channelId !== State.channelId) return;
@@ -1052,3 +1084,91 @@ socket.on('call-dropped', () => {
   resetCallState();
 });
 
+
+// --- STATION SCHEDULE ---
+
+async function fetchSchedule(channelId) {
+  if (!channelId) return;
+
+  try {
+    scheduleContainer.innerHTML = '<div class="schedule-loader">Loading station schedule...</div>';
+    const res = await fetch(`/api/schedules/channel/${channelId}`);
+    if (!res.ok) throw new Error('Failed to load schedule');
+
+    const schedules = await res.json();
+    renderSchedule(schedules);
+  } catch (e) {
+    console.error('[Schedule] Error:', e);
+    scheduleContainer.innerHTML = '<div class="schedule-loader">Failed to load schedule. Try again later.</div>';
+  }
+}
+
+function renderSchedule(schedules) {
+  if (!schedules || schedules.length === 0) {
+    scheduleContainer.innerHTML = '<div class="schedule-loader">No programs scheduled for this station yet.</div>';
+    return;
+  }
+
+  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+  const grouped = {};
+
+  // Group by day
+  schedules.forEach(s => {
+    if (!grouped[s.day_of_week]) grouped[s.day_of_week] = [];
+    grouped[s.day_of_week].push(s);
+  });
+
+  const now = new Date();
+  const currentDay = now.getDay();
+  const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+  let html = '';
+  // Sort by day 0-6
+  Object.keys(grouped).sort().forEach(dayIdx => {
+    html += `
+      <div class="schedule-day">
+        <h4>${days[dayIdx]}</h4>
+        <div class="day-slots">
+          ${grouped[dayIdx].map(slot => {
+      const isToday = parseInt(dayIdx) === currentDay;
+      // Basic check for "is-active"
+      const isActive = isToday && currentTime >= slot.start_time.substring(0, 5) && currentTime <= slot.end_time.substring(0, 5);
+
+      return `
+              <div class="slot-item ${isActive ? 'is-active' : ''}">
+                <span class="slot-time">${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}</span>
+                <span class="slot-name">Music Selection</span>
+              </div>
+            `;
+    }).join('')}
+        </div>
+      </div>
+    `;
+  });
+
+  scheduleContainer.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
+function toggleSchedule(show) {
+  if (show) {
+    scheduleOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    fetchSchedule(State.channelId);
+  } else {
+    scheduleOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+if (viewScheduleBtn) {
+  viewScheduleBtn.addEventListener('click', () => toggleSchedule(true));
+}
+if (closeScheduleBtn) {
+  closeScheduleBtn.addEventListener('click', () => toggleSchedule(false));
+}
+if (scheduleOverlay) {
+  scheduleOverlay.addEventListener('click', (e) => {
+    if (e.target === scheduleOverlay) toggleSchedule(false);
+  });
+}
