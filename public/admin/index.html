@@ -410,6 +410,31 @@
             when you are offline. It stops the moment you go live.</p>
         </section>
 
+        <!-- Broadcaster Jingle Pad (Live FX) -->
+        <section id="jingle-pad-section" class="section-card glass-card hidden">
+          <div class="section-header">
+            <h2><i data-lucide="zap"></i> Broadcaster Jingle Pad</h2>
+            <div class="header-actions">
+              <button id="stop-all-jingles-btn" class="btn danger-small">
+                <i data-lucide="square"></i> Stop All
+              </button>
+            </div>
+          </div>
+          <div class="jingle-settings">
+            <div class="field-inline" style="display: flex; align-items: center; gap: 15px; margin-bottom: 1rem;">
+              <label style="font-size: 0.8rem; color: var(--text-dim);">Jingle Master Volume</label>
+              <input type="range" id="jingle-volume-slider" min="0" max="1.5" step="0.05" value="0.8"
+                style="flex: 1; height: 4px;">
+            </div>
+          </div>
+          <div id="jingle-grid" class="jingle-grid">
+            <!-- Populated via JS -->
+            <div class="empty-state small">No jingles found in library.</div>
+          </div>
+          <p class="section-hint">Click a jingle to play it instantly on your live stream. These only work while you are
+            broadcasting.</p>
+        </section>
+
         <!-- Media Library (Auto-DJ) -->
         <section class="section-card glass-card recordings-container">
           <div class="section-header">

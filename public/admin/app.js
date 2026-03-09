@@ -92,6 +92,12 @@ const closeScheduleModal = document.getElementById('close-schedule-modal');
 const scheduleForm = document.getElementById('schedule-form');
 const schedulePlaylistSelect = document.getElementById('schedule-playlist-select');
 
+// Jingle Pad DOM refs
+const jinglePadSection = document.getElementById('jingle-pad-section');
+const jingleGrid = document.getElementById('jingle-grid');
+const jingleVolumeSlider = document.getElementById('jingle-volume-slider');
+const stopAllJinglesBtn = document.getElementById('stop-all-jingles-btn');
+
 let allPlaylists = [];
 let allSchedules = [];
 let selectedPlaylistId = null;
@@ -705,6 +711,7 @@ async function startBroadcast(channelId) {
     liveIndicator.textContent = '● Live';
     liveIndicator.className = 'indicator live';
     isLive = true;
+    if (jinglePadSection) jinglePadSection.classList.remove('hidden');
 
     sessionStorage.setItem('activeChannelId', channelId);
 
@@ -742,6 +749,7 @@ stopBroadcastBtn.addEventListener('click', () => {
   liveIndicator.textContent = '● Offline';
   liveIndicator.className = 'indicator offline';
   isLive = false;
+  if (jinglePadSection) jinglePadSection.classList.add('hidden');
 
   stopAudioMeter();
 
@@ -1233,6 +1241,7 @@ async function loadMedia() {
     const data = await res.json();
     allMedia = Array.isArray(data) ? data : [];
     renderMedia(allMedia);
+    renderJinglePad();
   } catch (e) {
     console.error('Failed to load media library:', e);
     allMedia = [];
@@ -1397,6 +1406,85 @@ if (closeUploadModal) {
     uploadMediaModal.classList.add('hidden');
     uploadMediaForm.reset();
     uploadMediaStatus.textContent = '';
+  });
+}
+
+// --- JINGLE PAD LOGIC ---
+let activeJinglePlayers = [];
+
+function renderJinglePad() {
+  if (!jingleGrid) return;
+
+  const jingles = allMedia.filter(m => m.category === 'jingle');
+
+  if (jingles.length === 0) {
+    jingleGrid.innerHTML = '<div class="empty-state small">No jingles found in library.</div>';
+    return;
+  }
+
+  jingleGrid.innerHTML = jingles.map(j => `
+    <div class="jingle-btn" data-id="${j.id}" onclick="playJingle('${j.id}', '${j.cloud_url}')">
+      <i data-lucide="music"></i>
+      <span class="jingle-name" title="${j.title}">${j.title}</span>
+    </div>
+  `).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+window.playJingle = (id, url) => {
+  if (!isLive || !audioContext || !mediaStreamDestination) {
+    alert('Jingles can only be triggered while you are Broadcasting Live!');
+    return;
+  }
+
+  const btn = document.querySelector(`.jingle-btn[data-id="${id}"]`);
+  if (btn) btn.classList.add('playing');
+
+  const audio = new Audio(url);
+  audio.crossOrigin = 'anonymous';
+
+  const sourceNode = audioContext.createMediaElementSource(audio);
+  const jingleGain = audioContext.createGain();
+
+  // Set initial volume from slider
+  jingleGain.gain.value = jingleVolumeSlider ? parseFloat(jingleVolumeSlider.value) : 0.8;
+
+  sourceNode.connect(jingleGain);
+  jingleGain.connect(mediaStreamDestination);
+
+  audio.play().catch(e => console.error('Jingle play error:', e));
+
+  const playerObj = { id, audio, gain: jingleGain };
+  activeJinglePlayers.push(playerObj);
+
+  audio.onended = () => {
+    if (btn) btn.classList.remove('playing');
+    activeJinglePlayers = activeJinglePlayers.filter(p => p !== playerObj);
+    jingleGain.disconnect();
+    sourceNode.disconnect();
+  };
+};
+
+if (stopAllJinglesBtn) {
+  stopAllJinglesBtn.addEventListener('click', () => {
+    activeJinglePlayers.forEach(p => {
+      p.audio.pause();
+      p.audio.currentTime = 0;
+      const btn = document.querySelector(`.jingle-btn[data-id="${p.id}"]`);
+      if (btn) btn.classList.remove('playing');
+      p.gain.disconnect();
+    });
+    activeJinglePlayers = [];
+  });
+}
+
+if (jingleVolumeSlider) {
+  jingleVolumeSlider.addEventListener('input', (e) => {
+    const vol = parseFloat(e.target.value);
+    activeJinglePlayers.forEach(p => {
+      p.gain.gain.setTargetAtTime(vol, audioContext.currentTime, 0.05);
+    });
   });
 }
 

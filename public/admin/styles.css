@@ -1360,3 +1360,73 @@ body {
   padding: 1rem;
   font-size: 0.8rem;
 }
+
+/* Jingle Pad Grid */
+.jingle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.jingle-btn {
+  background: var(--card-nested);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.jingle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--secondary);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.jingle-btn:active {
+  transform: scale(0.95);
+}
+
+.jingle-btn.playing {
+  border-color: var(--success);
+  background: rgba(0, 242, 234, 0.05);
+  animation: pulse-border 1.5s infinite;
+}
+
+.jingle-btn i {
+  color: var(--secondary);
+  width: 24px;
+  height: 24px;
+}
+
+.jingle-btn .jingle-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+@keyframes pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 242, 234, 0.2);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 242, 234, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 242, 234, 0);
+  }
+}
