@@ -668,12 +668,12 @@ function appendMessage(msg) {
   const isOwn = msg.username === currentUsername;
 
   const div = document.createElement('div');
-  div.className = `message - item ${isOwn ? 'own' : ''} `;
+  div.className = `message-item ${isOwn ? 'own' : ''}`;
 
   div.innerHTML = `
-        < div class="message-meta" > ${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div >
-          <div class="chat-bubble">${msg.content}</div>
-      `;
+    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="chat-bubble">${msg.content}</div>
+  `;
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -897,10 +897,10 @@ socket.on('autodj-track-changed', (meta) => {
   if (nowPlayingEl) {
     const categoryEmoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' };
     const emoji = categoryEmoji[meta.category] || '🎵';
-    nowPlayingEl.textContent = `${emoji} Now Playing: ${meta.title} `;
+    nowPlayingEl.textContent = `${emoji} Now Playing: ${meta.title}`;
     nowPlayingEl.style.display = 'block';
   }
-  updateStatus(`📻 Auto - DJ: ${meta.title} `, 'live');
+  updateStatus(`📻 Auto-DJ: ${meta.title}`, 'live');
 });
 
 socket.on('autodj-stopped', ({ channelId, reason }) => {
