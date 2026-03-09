@@ -77,7 +77,7 @@ if (CONFIG.API_ONLY && CONFIG.FRONTEND_URL) {
   });
 }
 
-setupSocketHandlers(io);
+const socketManager = setupSocketHandlers(io);
 
 const PORT = CONFIG.PORT;
 
@@ -86,6 +86,11 @@ const PORT = CONFIG.PORT;
     CONFIG.validate();
     await initializeDatabase();
     ensureRecordingsDirectory();
+
+    // Start Auto-DJ boot-up sequence now that DB is ready
+    if (socketManager && socketManager.activateAllStations) {
+      await socketManager.activateAllStations();
+    }
 
     server.listen(PORT, () => {
       console.log(`Radio server running on port ${PORT}`);

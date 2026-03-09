@@ -918,10 +918,8 @@ socket.on('autodj-stopped', ({ channelId, reason }) => {
   if (reason === 'broadcaster_took_over') {
     updateStatus('🎙️ Live broadcast resumed', 'live');
   } else {
-    // Fall back to offline recording if one exists
-    updateStatus('Auto-DJ ended. Loading last recording...', 'connecting');
+    updateStatus('Auto-DJ on standby', 'connecting');
     if (pulseRing) pulseRing.style.display = 'none';
-    tryOfflinePlayback();
   }
 });
 

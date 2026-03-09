@@ -111,8 +111,37 @@ function setupSocketHandlers(io) {
         MessageModel.findByChannelId(channelId).then(history => {
           socket.emit('chat-history', { channelId, messages: history });
         }).catch(e => console.error('Error sending chat history to listener:', e.message));
+
+        // Check if Auto-DJ is already running for this channel
+        if (autoDJService.isRunning(channelId)) {
+          const track = autoDJService.getCurrentTrack(channelId);
+          socket.emit('autodj-started', { channelId });
+          if (track) {
+            socket.emit('autodj-track-changed', {
+              channelId,
+              title: track.title,
+              category: track.category,
+              tags: track.tags
+            });
+          }
+        }
       } else {
-        socket.emit('no-broadcast');
+        // If not live, check if we can start Auto-DJ (just in case)
+        if (!autoDJService.isRunning(channelId)) {
+          startAutoDJ(channelId, io);
+        } else {
+          // Already running, just inform the listener
+          const track = autoDJService.getCurrentTrack(channelId);
+          socket.emit('autodj-started', { channelId });
+          if (track) {
+            socket.emit('autodj-track-changed', {
+              channelId,
+              title: track.title,
+              category: track.category,
+              tags: track.tags
+            });
+          }
+        }
       }
     });
 
@@ -361,20 +390,22 @@ function setupSocketHandlers(io) {
     io.to(channelId).emit('autodj-no-media', { channelId });
   });
 
-  // ── ON BY DEFAULT: Boot-up Activation ────────────────────────
-  (async () => {
-    console.log('[AutoDJ] Boot-up sequence: Activating all inactive stations...');
-    try {
-      const channels = await ChannelModel.findAll();
-      for (const ch of channels) {
-        if (!webrtcService.isChannelLive(ch.id)) {
-          startAutoDJ(ch.id, io);
+  // Export a boot-up function to be called after DB is ready
+  return {
+    activateAllStations: async () => {
+      console.log('[AutoDJ] Boot-up sequence: Activating all inactive stations...');
+      try {
+        const channels = await ChannelModel.findAll();
+        for (const ch of channels) {
+          if (!webrtcService.isChannelLive(ch.id) && !autoDJService.isRunning(ch.id)) {
+            startAutoDJ(ch.id, io);
+          }
         }
+      } catch (e) {
+        console.error('[AutoDJ] Boot-up activation failed:', e.message);
       }
-    } catch (e) {
-      console.error('[AutoDJ] Boot-up activation failed:', e.message);
     }
-  })();
+  };
 }
 
 module.exports = setupSocketHandlers;
