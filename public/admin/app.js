@@ -476,6 +476,10 @@ channelSelect.addEventListener('change', () => {
   initChart();
   startAnalyticsRefresh();
   loadMedia();
+
+  if (selectedChannelId) {
+    socket.emit('get-autodj-status', { channelId: selectedChannelId });
+  }
 });
 
 shareChannelBtn.addEventListener('click', () => {
@@ -1453,8 +1457,11 @@ let monitorVolume = 0.5;
 
 function setAutoDJState(running) {
   if (autoDJStartBtn) autoDJStartBtn.disabled = running;
+  if (autoDJStopBtn) autoDJStopBtn.disabled = !running;
+  if (autoDJSkipBtn) autoDJSkipBtn.disabled = !running;
+
   if (running) {
-    autoDJStatusBadge.textContent = '\uD83D\uDCFB Live';
+    autoDJStatusBadge.textContent = '● Running';
     autoDJStatusBadge.style.cssText = 'background:rgba(0,242,234,0.15);color:#00f2ea;border:1px solid rgba(0,242,234,0.4);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:500;white-space:nowrap;';
   } else {
     autoDJStatusBadge.textContent = '● Offline';
@@ -1577,4 +1584,15 @@ socket.on('autodj-no-media', ({ channelId }) => {
   if (channelId !== selectedChannelId) return;
   alert('No media in the library for this station. Upload tracks first.');
   setAutoDJState(false);
+});
+
+socket.on('autodj-status', (data) => {
+  if (data.channelId !== selectedChannelId) return;
+  setAutoDJState(data.isRunning);
+  if (data.isRunning && data.currentTrack) {
+    const meta = data.currentTrack;
+    const emoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' }[meta.category] || '📻';
+    if (autoDJTrackTitle) autoDJTrackTitle.textContent = emoji + ' ' + meta.title + ' (' + meta.index + '/' + (meta.total || '?') + ')';
+    if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
+  }
 });
