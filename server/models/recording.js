@@ -153,16 +153,10 @@ const RecordingModel = {
     }
   },
 
-  async updateMetadata(id, metadata) {
-    const { title, description, tags } = metadata;
+  async updateMetadata(id, updates) {
     const { error } = await getSupabase()
       .from('recordings')
-      .update({
-        title: title || undefined,
-        description: description || undefined,
-        tags: tags || undefined,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('id', id);
 
     if (error) {

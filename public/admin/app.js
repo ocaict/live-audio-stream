@@ -1452,7 +1452,7 @@ function getDragAfterElement(container, y) {
 async function deleteMedia(id) {
   if (!confirm('Delete this media file? This cannot be undone.')) return;
   try {
-    const res = await apiFetch(`/ api / media / ${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/media/${id}`, { method: 'DELETE' });
     if (res.ok) {
       allMedia = allMedia.filter(m => m.id !== id);
       renderMedia(allMedia);
