@@ -564,6 +564,16 @@ footer {
   align-self: flex-end;
 }
 
+.message-item.deleted {
+  opacity: 0;
+  transform: translateX(-10px);
+  max-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
 .chat-bubble {
   padding: 0.5rem 0.75rem;
   background: rgba(32, 44, 51, 0.85);

@@ -322,7 +322,13 @@
         <section class="section-card glass-card chat-section">
           <div class="section-header">
             <h2><i data-lucide="messages-square"></i> Live Message Board</h2>
-            <div id="chat-status" class="status-msg small">Connected</div>
+            <div class="header-actions">
+              <button id="clear-chat-btn" class="btn-small danger-small" title="Clear all messages">
+                <i data-lucide="trash-2"></i>
+                <span>Clear Chat</span>
+              </button>
+              <div id="chat-status" class="status-msg small">Connected</div>
+            </div>
           </div>
           <div class="chat-container">
             <div id="chat-messages" class="chat-messages">

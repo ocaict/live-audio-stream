@@ -294,6 +294,28 @@ function setupSocketHandlers(io) {
       }
     });
 
+    socket.on('delete-message', async (data) => {
+      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const { messageId, channelId } = data;
+      try {
+        await MessageModel.deleteById(messageId);
+        io.to(channelId).emit('message-deleted', { messageId, channelId });
+      } catch (e) {
+        socket.emit('error', 'Failed to delete message');
+      }
+    });
+
+    socket.on('clear-chat', async (data) => {
+      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const { channelId } = data;
+      try {
+        await MessageModel.deleteByChannelId(channelId);
+        io.to(channelId).emit('chat-cleared', { channelId });
+      } catch (e) {
+        socket.emit('error', 'Failed to clear chat');
+      }
+    });
+
     // ── Admin: Manual Auto-DJ controls ──────────────────────────
     socket.on('admin-start-autodj', (data) => {
       if (!socket.user) { socket.emit('error', 'Auth required'); return; }

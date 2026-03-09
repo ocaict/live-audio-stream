@@ -44,6 +44,18 @@ const MessageModel = {
             console.error(`Error deleting messages for channel ${channelId}:`, error);
             throw error;
         }
+    },
+
+    async deleteById(messageId) {
+        const { error } = await getSupabase()
+            .from('messages')
+            .delete()
+            .eq('id', messageId);
+
+        if (error) {
+            console.error(`Error deleting message ${messageId}:`, error);
+            throw error;
+        }
     }
 };
 

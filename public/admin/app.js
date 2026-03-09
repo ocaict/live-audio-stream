@@ -946,20 +946,56 @@ socket.on('new-message', (msg) => {
   appendMessage(msg);
 });
 
+socket.on('message-deleted', (data) => {
+  if (data.channelId !== selectedChannelId) return;
+  const msgEl = document.querySelector(`.message-item[data-id="${data.messageId}"]`);
+  if (msgEl) {
+    msgEl.classList.add('deleted');
+    setTimeout(() => msgEl.remove(), 300);
+  }
+});
+
+socket.on('chat-cleared', (data) => {
+  if (data.channelId !== selectedChannelId) return;
+  chatMessages.innerHTML = '<div class="chat-placeholder">No messages yet. Start the conversation!</div>';
+});
+
 function appendMessage(msg) {
   const currentUsername = document.getElementById('header-username')?.textContent || 'Broadcaster';
   const isOwn = msg.username === currentUsername || msg.username === 'Broadcaster' || msg.username === 'admin';
 
   const div = document.createElement('div');
   div.className = `message-item ${isOwn ? 'own' : ''}`;
+  div.dataset.id = msg.id;
 
   div.innerHTML = `
-    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="message-meta">
+      <span>${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <button class="delete-msg-btn" onclick="deleteMessage('${msg.id}')" title="Delete Message">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>
     <div class="chat-bubble">${msg.content}</div>
   `;
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (window.lucide) lucide.createIcons();
+}
+
+window.deleteMessage = (messageId) => {
+  if (confirm('Delete this message?')) {
+    socket.emit('delete-message', { messageId, channelId: selectedChannelId });
+  }
+};
+
+const clearChatBtn = document.getElementById('clear-chat-btn');
+if (clearChatBtn) {
+  clearChatBtn.addEventListener('click', () => {
+    if (confirm('ARE YOU SURE? This will permanently wipe ALL chat history for this station.')) {
+      socket.emit('clear-chat', { channelId: selectedChannelId });
+    }
+  });
 }
 
 chatForm.addEventListener('submit', (e) => {

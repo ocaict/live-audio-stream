@@ -680,12 +680,27 @@ socket.on('new-message', (msg) => {
   appendMessage(msg);
 });
 
+socket.on('message-deleted', (data) => {
+  if (data.channelId !== State.channelId) return;
+  const msgEl = document.querySelector(`.message-item[data-id="${data.messageId}"]`);
+  if (msgEl) {
+    msgEl.classList.add('deleted');
+    setTimeout(() => msgEl.remove(), 300);
+  }
+});
+
+socket.on('chat-cleared', (data) => {
+  if (data.channelId !== State.channelId) return;
+  chatMessages.innerHTML = '<div class="chat-placeholder">No messages yet. Start the conversation!</div>';
+});
+
 function appendMessage(msg) {
   const currentUsername = chatUsernameInput.value.trim() || 'Anonymous';
   const isOwn = msg.username === currentUsername;
 
   const div = document.createElement('div');
   div.className = `message-item ${isOwn ? 'own' : ''}`;
+  div.dataset.id = msg.id;
 
   div.innerHTML = `
     <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
