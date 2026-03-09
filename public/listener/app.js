@@ -139,6 +139,12 @@ const npcCategory = document.getElementById('npc-category');
 const npcNextTitle = document.getElementById('npc-next-title'); // Added this
 const npcIcon = document.querySelector('.npc-icon i');
 
+// Chat UI
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatUsernameInput = document.getElementById('chat-username');
+
 // Library Overlay DOM
 const viewLibraryBtn = document.getElementById('view-library-btn');
 const closeLibraryBtn = document.getElementById('close-library-btn');
