@@ -1698,6 +1698,17 @@ socket.on('autodj-track-changed', (meta) => {
   if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
 });
 
+// Handle the server's response to get-autodj-status (fired when admin selects a channel)
+socket.on('autodj-status', ({ channelId, isRunning, currentTrack }) => {
+  if (channelId !== selectedChannelId) return;
+  setAutoDJState(isRunning);
+  if (isRunning && currentTrack) {
+    const emoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' }[currentTrack.category] || '📻';
+    if (autoDJTrackTitle) autoDJTrackTitle.textContent = emoji + ' ' + currentTrack.title + ' (' + currentTrack.index + '/' + currentTrack.total + ')';
+    if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
+  }
+});
+
 // --- Broadcaster Monitor Logic ---
 
 function initMonitorAudio() {
