@@ -11,9 +11,7 @@ let audioCtx = null;
 let masterGain = null;
 let rtcSource = null;
 let rtcGain = null;
-let vodSource = null;
-let vodGain = null;
-let currentActiveSource = null; // 'rtc', 'vod', 'dj'
+let currentActiveSource = null; // 'rtc', 'dj'
 const SOURCE_FADE_MS = 1000; // 1 second crossfade between sources
 
 const State = {
@@ -47,9 +45,6 @@ function initMasterAudio() {
 
     rtcGain = audioCtx.createGain();
     rtcGain.connect(masterGain);
-
-    vodGain = audioCtx.createGain();
-    vodGain.connect(masterGain);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
@@ -64,22 +59,16 @@ function transitionToSource(type) {
   // Fade out current active
   if (currentActiveSource === 'rtc' && rtcGain) {
     rtcGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
-  } else if (currentActiveSource === 'vod' && vodGain) {
-    vodGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
   }
-  // (Auto-DJ tracks fade themselves out when trackId changes, 
-  // but we can also handle a total DJ cut-off here if we want absolute silence).
+  // (Auto-DJ tracks fade themselves out when trackId changes)
 
   // Fade in new active
   if (type === 'rtc' && rtcGain) {
     rtcGain.gain.setTargetAtTime(1, currTime, fadeTime / 3);
-  } else if (type === 'vod' && vodGain) {
-    vodGain.gain.setTargetAtTime(1, currTime, fadeTime / 3);
   } else if (type === 'dj') {
     // DJ tracks handle their own gain nodes that connect to masterGain.
     // We just ensure the others are muted.
     if (rtcGain) rtcGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
-    if (vodGain) vodGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
   }
 
   currentActiveSource = type;
@@ -303,78 +292,6 @@ async function startListening() {
   connectToBroadcast();
 }
 
-async function tryOfflinePlayback() {
-  if (!State.channelId) {
-    updateStatus('No channel selected', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/recordings/latest/${State.channelId}`);
-
-    if (!res.ok) {
-      if (res.status === 404) {
-        updateStatus('Broadcast ended. No recording available.', 'error');
-      } else {
-        updateStatus('Server error. Retrying...', 'connecting');
-        setTimeout(tryOfflinePlayback, 2000);
-      }
-      refreshUI();
-      return;
-    }
-    const recording = await res.json();
-
-    if (!recording || !recording.id) {
-      updateStatus('Broadcast ended. No recording available.', 'error');
-      refreshUI();
-      return;
-    }
-
-    latestRecordingUrl = `/api/recordings/${recording.id}/stream`;
-
-    audioPlayer.pause();
-    audioPlayer.srcObject = null;
-    audioPlayer.removeAttribute('src');
-    audioPlayer.load();
-
-    audioPlayer.volume = State.volume;
-    audioPlayer.src = latestRecordingUrl;
-    audioPlayer.loop = true;
-
-    const playPromise = audioPlayer.play();
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        audioPlayer.classList.add('show');
-        State.commit('isStreaming', true);
-
-        // Connect to Master Bus
-        if (audioCtx && !vodSource) {
-          vodSource = audioCtx.createMediaElementSource(audioPlayer);
-          vodSource.connect(vodGain);
-        }
-        transitionToSource('vod');
-
-        // UX: Show recording info in the Now Playing bar
-        const nowPlayingEl = document.getElementById('now-playing-bar');
-        if (nowPlayingEl) {
-          const dateStr = new Date(recording.created_at).toLocaleDateString();
-          nowPlayingEl.textContent = `📺 Classic: ${recording.title || 'Untitled'} (${dateStr})`;
-          nowPlayingEl.style.display = 'block';
-        }
-
-        updateStatus('Playing latest recording (offline)', 'success');
-        pulseRing.classList.add('active');
-      }).catch(e => {
-        console.error('Play promise error:', e);
-        updateStatus('Click to play recording', 'error');
-      });
-    }
-  } catch (e) {
-    console.error('Failed to load offline recording:', e);
-    updateStatus('Broadcast ended. Waiting for restart...', 'connecting');
-  }
-}
-
 let isConnecting = false;
 
 async function connectToBroadcast() {
@@ -405,18 +322,9 @@ async function connectToBroadcast() {
     }
 
     const channel = State.channels.find(c => String(c.id) === String(State.channelId));
-    if (!channel) {
-      console.log('Channel not found in local state, refreshing...');
-      await loadChannels();
-      const refreshedChannel = State.channels.find(c => String(c.id) === String(State.channelId));
-      if (!refreshedChannel || !refreshedChannel.isLive) {
-        console.log('Target offline, trying offline playback...');
-        await tryOfflinePlayback();
-        return;
-      }
-    } else if (!channel.isLive) {
-      console.log('Target offline, trying offline playback...');
-      await tryOfflinePlayback();
+    if (!channel || !channel.isLive) {
+      console.log('Target offline, waiting for Live or Auto-DJ...');
+      updateStatus('Station is currently on standby', 'connecting');
       return;
     }
 
@@ -520,9 +428,9 @@ function attemptReconnect() {
 
     const channel = State.channels.find(c => String(c.id) === String(State.channelId));
     if (!channel || !channel.isLive) {
-      console.log('Channel not live, trying offline playback...');
+      console.log('Channel not live, staying on standby...');
       State.commit('isReconnecting', false);
-      tryOfflinePlayback();
+      refreshUI();
       return;
     }
 
@@ -653,7 +561,7 @@ socket.on('channel-live', (data) => {
         peerConnection = null;
       }
       State.commit('isStreaming', false);
-      tryOfflinePlayback();
+      updateStatus('Broadcast ended. Station returning to feed...', 'connecting');
     }
   }
   renderChannelSelector();

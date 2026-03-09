@@ -3,6 +3,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const RecordingModel = require('../models/recording');
 const ChannelModel = require('../models/channel');
+const MediaLibraryModel = require('../models/mediaLibrary');
 const { getRecordingsDir } = require('../config/database');
 const cloudinaryService = require('../services/cloudinaryService');
 const CONFIG = require('../config/constants');
@@ -261,6 +262,40 @@ const recordingController = {
       }
       res.json(recording);
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async promoteToMedia(req, res) {
+    try {
+      const { id } = req.params;
+      const recording = await RecordingModel.findById(id);
+
+      if (!recording) {
+        return res.status(404).json({ error: 'Recording not found' });
+      }
+
+      if (!recording.cloud_url) {
+        return res.status(400).json({ error: 'Only recordings stored in the cloud can be promoted to the Auto-DJ rotation.' });
+      }
+
+      // Create a media item from the recording
+      const newMedia = {
+        id: uuidv4(),
+        channel_id: recording.channel_id,
+        title: recording.title || `Recording: ${recording.filename}`,
+        category: 'show', // Default category for recordings
+        filename: recording.filename,
+        cloud_url: recording.cloud_url,
+        filesize: recording.filesize,
+        duration: recording.duration || 0,
+        tags: recording.tags || []
+      };
+
+      await MediaLibraryModel.create(newMedia);
+      res.json({ message: 'Recording successfully promoted to Auto-DJ rotation!', mediaId: newMedia.id });
+    } catch (error) {
+      console.error('[RecordingController] Promotion failed:', error);
       res.status(500).json({ error: error.message });
     }
   }

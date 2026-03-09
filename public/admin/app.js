@@ -961,6 +961,7 @@ function renderRecordings(recordings) {
         </div>
         <div class="recording-actions">
           <button class="btn-icon play" data-id="${r.id}" title="Play"><i data-lucide="play-circle"></i></button>
+          <button class="btn-icon promote" data-id="${r.id}" title="Promote to Auto-DJ"><i data-lucide="list-plus"></i></button>
           <button class="btn-icon edit" data-id="${r.id}" title="Edit Info"><i data-lucide="edit-3"></i></button>
           <button class="btn-icon download" data-id="${r.id}" title="Download"><i data-lucide="download"></i></button>
           <button class="btn-icon delete" data-id="${r.id}" title="Delete"><i data-lucide="trash-2"></i></button>
@@ -972,6 +973,7 @@ function renderRecordings(recordings) {
   lucide.createIcons();
 
   recordingsList.querySelectorAll('.play').forEach(b => b.onclick = () => playRecording(b.dataset.id));
+  recordingsList.querySelectorAll('.promote').forEach(b => b.onclick = () => promoteRecording(b.dataset.id));
   recordingsList.querySelectorAll('.edit').forEach(b => b.onclick = () => openMetadataModal(b.dataset.id));
   recordingsList.querySelectorAll('.download').forEach(b => b.onclick = () => window.open(API_URL + `/api/recordings/${b.dataset.id}/download`, '_blank'));
   recordingsList.querySelectorAll('.delete').forEach(b => b.onclick = async () => {
@@ -1049,6 +1051,26 @@ closeMetadataModalBtn.addEventListener('click', closeMetadataModal);
 cancelMetadataBtn.addEventListener('click', closeMetadataModal);
 saveMetadataBtn.addEventListener('click', saveMetadata);
 refreshRecordingsBtn.addEventListener('click', loadRecordings);
+
+async function promoteRecording(id) {
+  const rec = allRecordings.find(r => r.id === id);
+  if (!rec) return;
+
+  if (!confirm(`Add "${rec.title || 'this recording'}" to the Auto-DJ rotation library?`)) return;
+
+  try {
+    const res = await apiFetch(`/api/recordings/${id}/promote`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Promotion failed');
+
+    alert('✅ Recording successfully promoted to Auto-DJ rotation!');
+    loadMedia(); // Refresh media library view
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
 
 async function playRecording(id) {
   let player = document.getElementById('audio-player');
