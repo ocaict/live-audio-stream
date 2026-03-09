@@ -802,7 +802,11 @@ function stopAudioMeter() {
 }
 
 function drawMeter() {
-  if (!meterAnalyser || !isLive) return;
+  if (!meterAnalyser) return;
+  if (!isLive && !monitorActive) {
+    stopAudioMeter();
+    return;
+  }
 
   const bufferLength = meterAnalyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
@@ -1413,6 +1417,18 @@ const autoDJStatusBadge = document.getElementById('autodj-status-badge');
 const autoDJNowPlaying = document.getElementById('autodj-now-playing');
 const autoDJTrackTitle = document.getElementById('autodj-track-title');
 
+// Monitor UI
+const autoDJMonitorBtn = document.getElementById('autodj-monitor-btn');
+const monitorIcon = document.getElementById('monitor-icon');
+const monitorVolumeArea = document.getElementById('monitor-volume-area');
+const monitorVolumeSlider = document.getElementById('monitor-volume');
+
+let monitorActive = false;
+let monitorAudioCtx = null;
+let monitorGainNode = null;
+let monitorNextStartTime = 0;
+let monitorVolume = 0.5;
+
 function setAutoDJState(running) {
   if (autoDJStartBtn) autoDJStartBtn.disabled = running;
   if (running) {
@@ -1453,9 +1469,82 @@ socket.on('autodj-stopped', ({ channelId }) => {
 
 socket.on('autodj-track-changed', (meta) => {
   if (meta.channelId !== selectedChannelId) return;
-  const emoji = { music: '�', show: '�️', jingle: '✨', ad: '�️' }[meta.category] || '�';
+  const emoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' }[meta.category] || '📻';
   if (autoDJTrackTitle) autoDJTrackTitle.textContent = emoji + ' ' + meta.title + ' (' + meta.index + '/' + meta.total + ')';
   if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
+});
+
+// --- Broadcaster Monitor Logic ---
+
+function initMonitorAudio() {
+  if (!monitorAudioCtx) {
+    monitorAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+    monitorGainNode = monitorAudioCtx.createGain();
+    monitorGainNode.gain.value = monitorVolume;
+    monitorGainNode.connect(monitorAudioCtx.destination);
+
+    // Visual Monitor Integration
+    if (meterCanvas) {
+      if (!meterAnalyser) {
+        meterAnalyser = monitorAudioCtx.createAnalyser();
+        meterAnalyser.fftSize = 256;
+      }
+      monitorGainNode.connect(meterAnalyser);
+      drawMeter();
+    }
+  }
+}
+
+function scheduleMonitorChunk(rawBuffer) {
+  if (!monitorAudioCtx || !monitorActive) return;
+
+  // Convert raw bytes (PCM s16le) -> Float32
+  const int16 = new Int16Array(rawBuffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
+
+  const audioBuffer = monitorAudioCtx.createBuffer(1, float32.length, 44100);
+  audioBuffer.copyToChannel(float32, 0);
+
+  const source = monitorAudioCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(monitorGainNode);
+
+  const startAt = Math.max(monitorNextStartTime, monitorAudioCtx.currentTime + 0.05);
+  source.start(startAt);
+  monitorNextStartTime = startAt + audioBuffer.duration;
+}
+
+if (autoDJMonitorBtn) {
+  autoDJMonitorBtn.addEventListener('click', () => {
+    monitorActive = !monitorActive;
+    if (monitorActive) {
+      initMonitorAudio();
+      autoDJMonitorBtn.classList.add('active');
+      autoDJMonitorBtn.style.color = 'var(--primary)';
+      autoDJMonitorBtn.style.borderColor = 'var(--primary)';
+      monitorVolumeArea.classList.remove('hidden');
+    } else {
+      autoDJMonitorBtn.classList.remove('active');
+      autoDJMonitorBtn.style.color = '';
+      autoDJMonitorBtn.style.borderColor = '';
+      monitorVolumeArea.classList.add('hidden');
+    }
+  });
+}
+
+if (monitorVolumeSlider) {
+  monitorVolumeSlider.addEventListener('input', (e) => {
+    monitorVolume = parseFloat(e.target.value);
+    if (monitorGainNode) monitorGainNode.gain.value = monitorVolume;
+  });
+}
+
+socket.on('dj-audio-chunk', (payload) => {
+  if (!monitorActive || payload.channelId !== selectedChannelId) return;
+  const raw = payload.chunk || payload;
+  const buffer = raw instanceof ArrayBuffer ? raw : raw.buffer || raw;
+  scheduleMonitorChunk(buffer);
 });
 
 socket.on('autodj-control-ack', (data) => {

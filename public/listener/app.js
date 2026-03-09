@@ -6,6 +6,16 @@ let reconnectDelay = 2000;
 let offlineAudio = null;
 let latestRecordingUrl = null;
 
+// Unified Playout Engine
+let audioCtx = null;
+let masterGain = null;
+let rtcSource = null;
+let rtcGain = null;
+let vodSource = null;
+let vodGain = null;
+let currentActiveSource = null; // 'rtc', 'vod', 'dj'
+const SOURCE_FADE_MS = 1000; // 1 second crossfade between sources
+
 const State = {
   intent: localStorage.getItem('isListeningIntent') === 'true',
   channelId: localStorage.getItem('lastChannelId'),
@@ -20,12 +30,60 @@ const State = {
     if (key === 'channelId') localStorage.setItem('lastChannelId', value);
     if (key === 'volume') {
       localStorage.setItem('userVolume', value);
-      if (audioPlayer) audioPlayer.volume = value;
+      if (audioPlayer) audioPlayer.volume = value; // Fallback
+      if (masterGain) masterGain.gain.setTargetAtTime(value, audioCtx.currentTime, 0.1);
     }
     console.log(`[State Change] ${key} ->`, value);
     refreshUI();
   }
 };
+
+function initMasterAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(State.volume, audioCtx.currentTime);
+    masterGain.connect(audioCtx.destination);
+
+    rtcGain = audioCtx.createGain();
+    rtcGain.connect(masterGain);
+
+    vodGain = audioCtx.createGain();
+    vodGain.connect(masterGain);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function transitionToSource(type) {
+  if (!audioCtx || currentActiveSource === type) return;
+  const currTime = audioCtx.currentTime;
+  const fadeTime = SOURCE_FADE_MS / 1000;
+
+  console.log(`[Crossfade] Transitioning ${currentActiveSource} -> ${type}`);
+
+  // Fade out current active
+  if (currentActiveSource === 'rtc' && rtcGain) {
+    rtcGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
+  } else if (currentActiveSource === 'vod' && vodGain) {
+    vodGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
+  }
+  // (Auto-DJ tracks fade themselves out when trackId changes, 
+  // but we can also handle a total DJ cut-off here if we want absolute silence).
+
+  // Fade in new active
+  if (type === 'rtc' && rtcGain) {
+    rtcGain.gain.setTargetAtTime(1, currTime, fadeTime / 3);
+  } else if (type === 'vod' && vodGain) {
+    vodGain.gain.setTargetAtTime(1, currTime, fadeTime / 3);
+  } else if (type === 'dj') {
+    // DJ tracks handle their own gain nodes that connect to masterGain.
+    // We just ensure the others are muted.
+    if (rtcGain) rtcGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
+    if (vodGain) vodGain.gain.setTargetAtTime(0, currTime, fadeTime / 3);
+  }
+
+  currentActiveSource = type;
+}
 
 let rtcConfig = {
   iceServers: [
@@ -121,14 +179,11 @@ if (tuneInBtn) {
     tuneInOverlay.classList.add('hidden');
 
     // 2. Trigger audio start logic
-    // If the user previously had a channel intent, calling startListening() 
-    // will now succeed because of the user gesture.
+    initMasterAudio();
+
     if (!State.intent) {
-      // If no intent yet, start the current selected channel
       startListening();
     } else {
-      // If they already had intent (from localStorage), force a reconnect
-      // to ensure the AudioContext starts correctly now that we have a gesture.
       connectToBroadcast();
     }
   });
@@ -292,6 +347,13 @@ async function tryOfflinePlayback() {
         audioPlayer.classList.add('show');
         State.commit('isStreaming', true);
 
+        // Connect to Master Bus
+        if (audioCtx && !vodSource) {
+          vodSource = audioCtx.createMediaElementSource(audioPlayer);
+          vodSource.connect(vodGain);
+        }
+        transitionToSource('vod');
+
         // UX: Show recording info in the Now Playing bar
         const nowPlayingEl = document.getElementById('now-playing-bar');
         if (nowPlayingEl) {
@@ -375,6 +437,14 @@ async function connectToBroadcast() {
 
         audioPlayer.srcObject = event.streams[0];
         audioPlayer.volume = State.volume;
+
+        initMasterAudio();
+        // Pipe WebRTC into AudioContext for Global Crossfade
+        if (rtcSource) rtcSource.disconnect();
+        rtcSource = audioCtx.createMediaStreamSource(event.streams[0]);
+        rtcSource.connect(rtcGain);
+        transitionToSource('rtc');
+
         audioPlayer.play().then(() => {
           State.commit('isStreaming', true);
           State.commit('isReconnecting', false);
@@ -795,21 +865,18 @@ const DJ_CHANNELS = 1;
 const CROSSFADE_DURATION = 3.0; // 3 seconds overlap
 
 function initDJAudio() {
-  if (!djAudioCtx) {
-    djAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: DJ_SAMPLE_RATE });
-  }
-  if (djAudioCtx.state === 'suspended') {
-    djAudioCtx.resume();
-  }
+  initMasterAudio();
+  djIsActive = true;
+  transitionToSource('dj');
 }
 
 function scheduleChunk(rawBuffer, trackId) {
-  if (!djAudioCtx) return;
+  if (!audioCtx) return;
 
   // Initialize track state if this is a new track
   if (!trackStates.has(trackId)) {
-    const gainNode = djAudioCtx.createGain();
-    gainNode.connect(djAudioCtx.destination);
+    const gainNode = audioCtx.createGain();
+    gainNode.connect(masterGain);
 
     // Start silent, we will fade in
     gainNode.gain.setValueAtTime(0, djAudioCtx.currentTime);
