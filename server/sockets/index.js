@@ -336,6 +336,63 @@ function setupSocketHandlers(io) {
         currentTrack: autoDJService.getCurrentTrack(channelId)
       });
     });
+
+    // ── Listener Call-In System ────────────────────────
+    socket.on('request-to-speak', (data) => {
+      const channelId = data?.channelId || currentChannelId;
+      if (!channelId) return;
+
+      console.log(`[Call-In] User ${socket.id} requesting mic on ${channelId}`);
+      webrtcService.sendToBroadcaster(channelId, 'call-request', {
+        socketId: socket.id,
+        username: data.username || 'Anonymous Listener'
+      });
+    });
+
+    socket.on('cancel-request', (data) => {
+      const channelId = data?.channelId || currentChannelId;
+      if (!channelId) return;
+      webrtcService.sendToBroadcaster(channelId, 'call-request-cancelled', { socketId: socket.id });
+    });
+
+    socket.on('accept-call', (data) => {
+      if (!socket.user) return;
+      const { channelId, targetSocketId } = data;
+      console.log(`[Call-In] Broadcaster on ${channelId} accepted call from ${targetSocketId}`);
+      webrtcService.sendToListener(channelId, targetSocketId, 'call-accepted', { channelId });
+    });
+
+    socket.on('reject-call', (data) => {
+      if (!socket.user) return;
+      const { channelId, targetSocketId } = data;
+      webrtcService.sendToListener(channelId, targetSocketId, 'call-rejected', { channelId });
+    });
+
+    socket.on('drop-call', (data) => {
+      if (!socket.user) return;
+      const { channelId, targetSocketId } = data;
+      webrtcService.sendToListener(channelId, targetSocketId, 'call-dropped', { channelId });
+    });
+
+    // Sub-signaling for the Call (WebRTC Peer)
+    socket.on('call-offer', (data) => {
+      const { sdp, targetSocketId, channelId } = data;
+      webrtcService.sendToBroadcaster(channelId, 'call-offer', { sdp, socketId: socket.id });
+    });
+
+    socket.on('call-answer', (data) => {
+      const { sdp, targetSocketId, channelId } = data;
+      webrtcService.sendToListener(channelId, targetSocketId, 'call-answer', { sdp });
+    });
+
+    socket.on('call-ice', (data) => {
+      const { candidate, targetSocketId, channelId, toBroadcaster } = data;
+      if (toBroadcaster) {
+        webrtcService.sendToBroadcaster(channelId, 'call-ice', { candidate, socketId: socket.id });
+      } else {
+        webrtcService.sendToListener(channelId, targetSocketId, 'call-ice', { candidate });
+      }
+    });
   });
 
   webrtcService.on('channel-live', async (data) => {

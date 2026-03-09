@@ -321,6 +321,23 @@
             </button>
           </form>
         </section>
+
+        <!-- Listener Call-In Queue -->
+        <section id="call-in-section" class="section-card glass-card hidden">
+          <div class="section-header">
+            <h2><i data-lucide="phone-incoming"></i> Listener Call Queue</h2>
+            <div id="active-call-badge" class="status-msg small hidden"
+              style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">
+              ● LIVE CALL
+            </div>
+          </div>
+          <div id="call-queue-list" class="call-queue-list">
+            <div class="empty-state small">No pending callers.</div>
+          </div>
+          <p class="section-hint" style="margin-top: 1rem;">Accept a call to bring a listener on-air. Headphones are
+            highly recommended to prevent echo.</p>
+        </section>
+
         <!-- Live Analytics Grid -->
         <div class="analytics-grid">
           <!-- Station Ranking -->

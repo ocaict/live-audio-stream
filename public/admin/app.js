@@ -98,6 +98,14 @@ const jingleGrid = document.getElementById('jingle-grid');
 const jingleVolumeSlider = document.getElementById('jingle-volume-slider');
 const stopAllJinglesBtn = document.getElementById('stop-all-jingles-btn');
 
+// Call-In Queue DOM refs
+const callInSection = document.getElementById('call-in-section');
+const callQueueList = document.getElementById('call-queue-list');
+const activeCallBadge = document.getElementById('active-call-badge');
+
+let pendingCallers = [];
+let activeCall = null; // { socketId, username, pc, streamNode, gainNode }
+
 let allPlaylists = [];
 let allSchedules = [];
 let selectedPlaylistId = null;
@@ -712,6 +720,7 @@ async function startBroadcast(channelId) {
     liveIndicator.className = 'indicator live';
     isLive = true;
     if (jinglePadSection) jinglePadSection.classList.remove('hidden');
+    if (callInSection) callInSection.classList.remove('hidden');
 
     sessionStorage.setItem('activeChannelId', channelId);
 
@@ -750,6 +759,10 @@ stopBroadcastBtn.addEventListener('click', () => {
   liveIndicator.className = 'indicator offline';
   isLive = false;
   if (jinglePadSection) jinglePadSection.classList.add('hidden');
+  if (callInSection) callInSection.classList.add('hidden');
+  if (activeCall) dropCall(activeCall.socketId);
+  pendingCallers = [];
+  renderCallQueue();
 
   stopAudioMeter();
 
@@ -1972,5 +1985,160 @@ channelSelect.addEventListener('change', () => {
   if (selectedChannelId) {
     loadPlaylists();
     loadSchedules();
+  }
+});
+
+// --- CALL-IN SYSTEM LOGIC ---
+
+function renderCallQueue() {
+  if (!callQueueList) return;
+
+  if (pendingCallers.length === 0 && !activeCall) {
+    callQueueList.innerHTML = '<div class="empty-state small">No pending callers.</div>';
+    return;
+  }
+
+  const items = [];
+
+  // Active call first
+  if (activeCall) {
+    items.push(`
+      <div class="call-item active-call">
+        <div class="caller-icon"><i data-lucide="mic"></i></div>
+        <div class="caller-info">
+          <span class="caller-name">${activeCall.username}</span>
+          <span class="caller-meta" style="color:var(--success)">LIVE ON AIR</span>
+        </div>
+        <div class="call-actions">
+          <button class="btn danger-small" onclick="dropCall('${activeCall.socketId}')">Drop</button>
+        </div>
+      </div>
+    `);
+  }
+
+  // Pending requests
+  pendingCallers.forEach(c => {
+    items.push(`
+      <div class="call-item">
+        <div class="caller-icon"><i data-lucide="user"></i></div>
+        <div class="caller-info">
+          <span class="caller-name">${c.username}</span>
+          <span class="caller-meta">Waiting to talk...</span>
+        </div>
+        <div class="call-actions">
+          <button class="btn success-small" onclick="acceptCall('${c.socketId}', '${c.username}')">Accept</button>
+          <button class="btn secondary-small" onclick="rejectCall('${c.socketId}')">Reject</button>
+        </div>
+      </div>
+    `);
+  });
+
+  callQueueList.innerHTML = items.join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+window.acceptCall = async (socketId, username) => {
+  if (activeCall) {
+    alert('One call at a time! Drop the current call first.');
+    return;
+  }
+
+  console.log(`[Call-In] Accepting call from ${username} (${socketId})`);
+  socket.emit('accept-call', { channelId: selectedChannelId, targetSocketId: socketId });
+
+  activeCall = { socketId, username };
+  pendingCallers = pendingCallers.filter(c => c.socketId !== socketId);
+
+  if (activeCallBadge) activeCallBadge.classList.remove('hidden');
+  renderCallQueue();
+};
+
+window.rejectCall = (socketId) => {
+  socket.emit('reject-call', { channelId: selectedChannelId, targetSocketId: socketId });
+  pendingCallers = pendingCallers.filter(c => c.socketId !== socketId);
+  renderCallQueue();
+};
+
+window.dropCall = (socketId) => {
+  socket.emit('drop-call', { channelId: selectedChannelId, targetSocketId: socketId });
+
+  if (activeCall && activeCall.socketId === socketId) {
+    if (activeCall.pc) activeCall.pc.close();
+    if (activeCall.streamNode) activeCall.streamNode.disconnect();
+    if (activeCall.gainNode) activeCall.gainNode.disconnect();
+    activeCall = null;
+    if (activeCallBadge) activeCallBadge.classList.add('hidden');
+  }
+
+  renderCallQueue();
+};
+
+// Signaling for the call peer
+socket.on('call-request', (data) => {
+  console.log('[Call-In] New call request:', data);
+  pendingCallers.push(data);
+  renderCallQueue();
+});
+
+socket.on('call-request-cancelled', (data) => {
+  pendingCallers = pendingCallers.filter(c => c.socketId !== data.socketId);
+  renderCallQueue();
+});
+
+socket.on('call-offer', async (data) => {
+  if (!activeCall || activeCall.socketId !== data.socketId) return;
+  console.log('[Call-In] Got call offer from', data.socketId);
+
+  try {
+    const pc = new RTCPeerConnection(rtcConfig);
+    activeCall.pc = pc;
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) {
+        socket.emit('call-ice', {
+          candidate,
+          channelId: selectedChannelId,
+          targetSocketId: data.socketId,
+          toBroadcaster: false
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      console.log('[Call-In] Received caller audio track!');
+      const stream = event.streams[0];
+
+      if (audioContext && mediaStreamDestination) {
+        const callerGain = audioContext.createGain();
+        callerGain.gain.value = 0.8; // Initial volume
+
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(callerGain);
+        callerGain.connect(mediaStreamDestination);
+
+        activeCall.streamNode = source;
+        activeCall.gainNode = callerGain;
+      }
+    };
+
+    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    socket.emit('call-answer', {
+      sdp: answer.sdp,
+      channelId: selectedChannelId,
+      targetSocketId: data.socketId
+    });
+
+  } catch (err) {
+    console.error('[Call-In] Failed to handle call offer:', err);
+    dropCall(data.socketId);
+  }
+});
+
+socket.on('call-ice', async (data) => {
+  if (activeCall && activeCall.socketId === data.socketId && activeCall.pc) {
+    await activeCall.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
 });

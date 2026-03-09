@@ -323,6 +323,86 @@ main {
   box-shadow: 0 10px 30px var(--success-glow);
 }
 
+/* Call-In Styles */
+.call-in-controls {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.call-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+}
+
+.call-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+  filter: brightness(1.1);
+}
+
+.call-btn.pending {
+  background: #4b5563;
+  animation: pulse-gray 2s infinite;
+}
+
+.call-btn.active {
+  background: #10b981;
+  animation: pulse-green 2s infinite;
+}
+
+.call-status-msg {
+  font-size: 0.8rem;
+  color: #a78bfa;
+  font-weight: 500;
+}
+
+@keyframes pulse-gray {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.hidden {
+  display: none !important;
+}
+
 /* Volume Control */
 .volume-control {
   display: flex;

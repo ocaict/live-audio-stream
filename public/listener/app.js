@@ -115,6 +115,15 @@ const volumeIcon = document.getElementById('volume-icon');
 const tuneInOverlay = document.getElementById('tune-in-overlay');
 const tuneInBtn = document.getElementById('tune-in-btn');
 
+// Call-In DOM elements
+const callInControls = document.getElementById('call-in-controls');
+const requestMicBtn = document.getElementById('request-mic-btn');
+const callStatusMsg = document.getElementById('call-status-msg');
+
+let callState = 'idle'; // 'idle', 'requesting', 'accepted', 'connected'
+let callPC = null;
+let callStream = null;
+
 // Chat UI
 const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
@@ -242,6 +251,14 @@ function refreshUI() {
       }
       pulseRing.classList.remove('active');
     }
+  }
+
+  // Show/Hide Call-In controls based on live status
+  if (uiLive && State.intent && State.isStreaming) {
+    if (callInControls) callInControls.classList.remove('hidden');
+  } else {
+    if (callInControls) callInControls.classList.add('hidden');
+    if (callState !== 'idle') resetCallState();
   }
 }
 
@@ -924,5 +941,99 @@ socket.on('autodj-stopped', ({ channelId, reason }) => {
 socket.on('autodj-no-media', ({ channelId }) => {
   if (channelId !== State.channelId) return;
   updateStatus('No media in library. Upload tracks to start Auto-DJ.', 'offline');
+});
+
+// ── Listener Call-In Logic ─────────────────────────
+
+function resetCallState() {
+  console.log('[Call-In] Resetting state');
+  if (callPC) { callPC.close(); callPC = null; }
+  if (callStream) { callStream.getTracks().forEach(t => t.stop()); callStream = null; }
+
+  callState = 'idle';
+  if (requestMicBtn) {
+    requestMicBtn.classList.remove('pending', 'active');
+    requestMicBtn.querySelector('span').textContent = 'Request to Speak';
+    requestMicBtn.disabled = false;
+  }
+  if (callStatusMsg) callStatusMsg.classList.add('hidden');
+}
+
+if (requestMicBtn) {
+  requestMicBtn.addEventListener('click', () => {
+    if (callState === 'idle') {
+      const username = State.username || chatUsernameInput?.value.trim() || 'Listener';
+      socket.emit('request-to-speak', { channelId: State.channelId, username });
+
+      callState = 'requesting';
+      requestMicBtn.classList.add('pending');
+      requestMicBtn.querySelector('span').textContent = 'Cancel Request';
+      if (callStatusMsg) {
+        callStatusMsg.textContent = 'Request sent... waiting for producer';
+        callStatusMsg.classList.remove('hidden');
+      }
+    } else {
+      socket.emit('cancel-request', { channelId: State.channelId });
+      resetCallState();
+    }
+  });
+}
+
+socket.on('call-accepted', async () => {
+  console.log('[Call-In] Producer accepted! Starting mic stream...');
+  callState = 'accepted';
+  if (callStatusMsg) callStatusMsg.textContent = 'Call accepted! Connecting mic...';
+
+  try {
+    callStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+    callPC = new RTCPeerConnection(rtcConfig);
+    callStream.getTracks().forEach(track => callPC.addTrack(track, callStream));
+
+    callPC.onicecandidate = ({ candidate }) => {
+      if (candidate) {
+        socket.emit('call-ice', { candidate, channelId: State.channelId, toBroadcaster: true });
+      }
+    };
+
+    const offer = await callPC.createOffer();
+    await callPC.setLocalDescription(offer);
+
+    socket.emit('call-offer', { sdp: offer.sdp, channelId: State.channelId });
+
+    callState = 'connected';
+    requestMicBtn.classList.remove('pending');
+    requestMicBtn.classList.add('active');
+    requestMicBtn.querySelector('span').textContent = 'Live on Air';
+    requestMicBtn.disabled = true;
+    if (callStatusMsg) callStatusMsg.textContent = '● You are LIVE on air';
+
+  } catch (err) {
+    console.error('[Call-In] Mic access error:', err);
+    alert('Could not access microphone for call-in.');
+    resetCallState();
+  }
+});
+
+socket.on('call-answer', async (data) => {
+  if (callPC) {
+    await callPC.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+  }
+});
+
+socket.on('call-ice', async (data) => {
+  if (callPC && data.candidate) {
+    await callPC.addIceCandidate(new RTCIceCandidate(data.candidate));
+  }
+});
+
+socket.on('call-rejected', () => {
+  alert('The producer is not taking calls right now.');
+  resetCallState();
+});
+
+socket.on('call-dropped', () => {
+  console.log('[Call-In] Producer dropped call');
+  resetCallState();
 });
 
