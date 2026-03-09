@@ -6,13 +6,20 @@ const CONFIG = require('../config/constants');
 ffmpeg.setFfmpegPath(CONFIG.FFMPEG_PATH);
 
 class FFmpegService {
-  convertWebMToMp3(inputPath, outputPath) {
+  convertWebMToMp3(inputPath, outputPath, normalize = false) {
     return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
+      let command = ffmpeg(inputPath)
         .audioCodec('libmp3lame')
         .audioBitrate('128k')
         .audioChannels(2)
-        .audioFrequency(44100)
+        .audioFrequency(44100);
+
+      if (normalize) {
+        // Broadcast standard -16 LUFS
+        command = command.audioFilter('loudnorm=I=-16:TP=-1.5:LRA=11');
+      }
+
+      command
         .on('start', (commandLine) => {
           console.log('FFmpeg started:', commandLine);
         })

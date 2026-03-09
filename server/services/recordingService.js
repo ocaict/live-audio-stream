@@ -93,8 +93,8 @@ class RecordingService {
     const mp3Path = path.join(dateDir, `${id}.mp3`);
 
     try {
-      console.log(`Converting ${tempPath} to MP3...`);
-      await ffmpegService.convertWebMToMp3(tempPath, mp3Path);
+      console.log(`Converting ${tempPath} to MP3 (Normalized)...`);
+      await ffmpegService.convertWebMToMp3(tempPath, mp3Path, true);
 
       if (!fs.existsSync(mp3Path)) {
         throw new Error('Conversion failed: Output file does not exist');

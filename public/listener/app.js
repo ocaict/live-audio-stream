@@ -265,6 +265,15 @@ async function tryOfflinePlayback() {
       playPromise.then(() => {
         audioPlayer.classList.add('show');
         State.commit('isStreaming', true);
+
+        // UX: Show recording info in the Now Playing bar
+        const nowPlayingEl = document.getElementById('now-playing-bar');
+        if (nowPlayingEl) {
+          const dateStr = new Date(recording.created_at).toLocaleDateString();
+          nowPlayingEl.textContent = `📺 Classic: ${recording.title || 'Untitled'} (${dateStr})`;
+          nowPlayingEl.style.display = 'block';
+        }
+
         updateStatus('Playing latest recording (offline)', 'success');
         pulseRing.classList.add('active');
       }).catch(e => {
