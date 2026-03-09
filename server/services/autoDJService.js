@@ -146,6 +146,9 @@ class AutoDJService extends EventEmitter {
             return;
         }
 
+        const nextTrackIdx = (session.currentIndex >= queue.length) ? 0 : session.currentIndex;
+        const nextTrack = queue[nextTrackIdx];
+
         console.log(`[AutoDJ] Now playing on ${channelId}: "${track.title}" (${track.category})`);
         session.emitMeta({
             channelId,
@@ -153,7 +156,11 @@ class AutoDJService extends EventEmitter {
             category: track.category,
             tags: track.tags,
             index: session.currentIndex,
-            total: queue.length
+            total: queue.length,
+            next: nextTrack ? {
+                title: nextTrack.title,
+                category: nextTrack.category
+            } : null
         });
 
         this._streamTrack(channelId, track);
@@ -255,6 +262,14 @@ class AutoDJService extends EventEmitter {
         if (!session) return null;
         const idx = Math.max(0, session.currentIndex - 1);
         return session.queue[idx] || null;
+    }
+
+    getNextTrack(channelId) {
+        const session = this.sessions.get(channelId);
+        if (!session) return null;
+        const idx = session.currentIndex;
+        const nextIdx = (idx >= session.queue.length) ? 0 : idx;
+        return session.queue[nextIdx] || null;
     }
 
     skipTrack(channelId) {

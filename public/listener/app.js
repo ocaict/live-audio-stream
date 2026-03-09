@@ -136,6 +136,7 @@ const scheduleContainer = document.getElementById('schedule-container');
 const nowPlayingCard = document.getElementById('now-playing-card');
 const npcTitle = document.getElementById('npc-title');
 const npcCategory = document.getElementById('npc-category');
+const npcNextTitle = document.getElementById('npc-next-title'); // Added this
 const npcIcon = document.querySelector('.npc-icon i');
 
 // Load saved username
@@ -951,6 +952,13 @@ function showNowPlaying(meta) {
 
   npcTitle.textContent = meta.title;
   npcCategory.textContent = meta.category;
+
+  // Next Track display
+  if (npcNextTitle && meta.next) {
+    npcNextTitle.textContent = meta.next.title;
+  } else if (npcNextTitle) {
+    npcNextTitle.textContent = 'Station Rotation';
+  }
 
   // Icon mapping
   const icons = { music: 'music', show: 'mic-2', jingle: 'sparkles', ad: 'megaphone' };

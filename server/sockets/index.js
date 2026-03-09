@@ -83,13 +83,18 @@ function setupSocketHandlers(io) {
       if (role === 'listener') {
         if (autoDJService.isRunning(channelId)) {
           const track = autoDJService.getCurrentTrack(channelId);
+          const nextTrack = autoDJService.getNextTrack(channelId);
           socket.emit('autodj-started', { channelId });
           if (track) {
             socket.emit('autodj-track-changed', {
               channelId,
               title: track.title,
               category: track.category,
-              tags: track.tags
+              tags: track.tags,
+              next: nextTrack ? {
+                title: nextTrack.title,
+                category: nextTrack.category
+              } : null
             });
           }
         } else if (!webrtcService.isChannelLive(channelId)) {
