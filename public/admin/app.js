@@ -1774,32 +1774,52 @@ window.deleteSchedule = async (id) => {
 };
 
 // Modal Toggle Handlers
-if (createPlaylistBtn) createPlaylistBtn.onclick = () => playlistModal.classList.remove('hidden');
-if (closePlaylistModal) closePlaylistModal.onclick = () => {
-  playlistModal.classList.add('hidden');
-  playlistForm.reset();
-};
+if (createPlaylistBtn) {
+  createPlaylistBtn.addEventListener('click', () => {
+    if (!selectedChannelId) {
+      alert('Please select a station first!');
+      return;
+    }
+    playlistModal.classList.remove('hidden');
+  });
+}
 
-if (addScheduleBtn) addScheduleBtn.onclick = () => {
-  if (allPlaylists.length === 0) {
-    alert('Please create at least one playlist first.');
-    return;
-  }
-  scheduleModal.classList.remove('hidden');
-};
-if (closeScheduleModal) closeScheduleModal.onclick = () => {
-  scheduleModal.classList.add('hidden');
-  scheduleForm.reset();
-};
+if (closePlaylistModal) {
+  closePlaylistModal.addEventListener('click', () => {
+    playlistModal.classList.add('hidden');
+    playlistForm.reset();
+  });
+}
+
+if (addScheduleBtn) {
+  addScheduleBtn.addEventListener('click', () => {
+    if (allPlaylists.length === 0) {
+      alert('Please create at least one playlist first.');
+      return;
+    }
+    scheduleModal.classList.remove('hidden');
+  });
+}
+
+if (closeScheduleModal) {
+  closeScheduleModal.addEventListener('click', () => {
+    scheduleModal.classList.add('hidden');
+    scheduleForm.reset();
+  });
+}
 
 // Form Handlers
 if (playlistForm) {
-  playlistForm.onsubmit = async (e) => {
+  playlistForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('playlist-name').value.trim();
     const description = document.getElementById('playlist-description').value.trim();
 
-    if (!name || !selectedChannelId) return;
+    if (!name) return;
+    if (!selectedChannelId) {
+      alert('Station context lost. Please re-select your station.');
+      return;
+    }
 
     try {
       const res = await apiFetch('/api/playlists', {
@@ -1811,13 +1831,19 @@ if (playlistForm) {
         playlistModal.classList.add('hidden');
         playlistForm.reset();
         loadPlaylists();
+      } else {
+        const errData = await res.json();
+        alert('Failed to create playlist: ' + (errData.error || 'Unknown error'));
       }
-    } catch (err) { console.error(err); }
-  };
+    } catch (err) {
+      console.error('Playlist creation error:', err);
+      alert('Network error while creating playlist.');
+    }
+  });
 }
 
 if (scheduleForm) {
-  scheduleForm.onsubmit = async (e) => {
+  scheduleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const playlistId = document.getElementById('schedule-playlist-select').value;
     const dayOfWeek = parseInt(document.getElementById('schedule-day').value);
@@ -1844,10 +1870,13 @@ if (scheduleForm) {
         loadSchedules();
       } else {
         const data = await res.json();
-        alert('Schedule conflict or error: ' + data.error);
+        alert('Schedule conflict or error: ' + (data.error || 'Check overlaps'));
       }
-    } catch (err) { console.error(err); }
-  };
+    } catch (err) {
+      console.error('Schedule creation error:', err);
+      alert('Network error while saving schedule.');
+    }
+  });
 }
 
 // Initial Sync
