@@ -103,8 +103,16 @@ const callInSection = document.getElementById('call-in-section');
 const callQueueList = document.getElementById('call-queue-list');
 const activeCallBadge = document.getElementById('active-call-badge');
 
+// Studio Clock DOM refs
+const studioTimeEl = document.getElementById('studio-time');
+const studioDateEl = document.getElementById('studio-date');
+const broadcastDurationEl = document.getElementById('broadcast-duration');
+const onAirTimerContainer = document.getElementById('on-air-timer');
+const clockOnAirIndicator = document.getElementById('clock-on-air-indicator');
+
 let pendingCallers = [];
 let activeCall = null; // { socketId, username, pc, streamNode, gainNode }
+let broadcastStartTime = null;
 
 let allPlaylists = [];
 let allSchedules = [];
@@ -722,6 +730,12 @@ async function startBroadcast(channelId) {
     if (jinglePadSection) jinglePadSection.classList.remove('hidden');
     if (callInSection) callInSection.classList.remove('hidden');
 
+    // Visual Clock Start
+    broadcastStartTime = Date.now();
+    document.body.classList.add('broadcasting-live');
+    if (onAirTimerContainer) onAirTimerContainer.classList.remove('inactive');
+    if (clockOnAirIndicator) clockOnAirIndicator.textContent = 'ON AIR';
+
     sessionStorage.setItem('activeChannelId', channelId);
 
     // Auto-resume recording if it was active
@@ -763,6 +777,13 @@ stopBroadcastBtn.addEventListener('click', () => {
   if (activeCall) dropCall(activeCall.socketId);
   pendingCallers = [];
   renderCallQueue();
+
+  // Visual Clock Reset
+  broadcastStartTime = null;
+  document.body.classList.remove('broadcasting-live');
+  if (onAirTimerContainer) onAirTimerContainer.classList.add('inactive');
+  if (clockOnAirIndicator) clockOnAirIndicator.textContent = 'OFF AIR';
+  if (broadcastDurationEl) broadcastDurationEl.textContent = '00:00:00';
 
   stopAudioMeter();
 
@@ -2142,3 +2163,42 @@ socket.on('call-ice', async (data) => {
     await activeCall.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
 });
+
+// --- VISUAL RADIO CLOCK LOGIC ---
+
+function updateStudioClock() {
+  const now = new Date();
+
+  // Update Current Local Time
+  if (studioTimeEl) {
+    studioTimeEl.textContent = now.toLocaleTimeString('en-GB', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+
+  // Update Date
+  if (studioDateEl) {
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const dateStr = `${days[now.getDay()]}, ${months[now.getMonth()]} ${String(now.getDate()).padStart(2, '0')}`;
+    studioDateEl.textContent = dateStr;
+  }
+
+  // Update Broadcast Duration
+  if (isLive && broadcastStartTime && broadcastDurationEl) {
+    const diff = Math.floor((Date.now() - broadcastStartTime) / 1000);
+    const hrs = Math.floor(diff / 3600);
+    const mins = Math.floor((diff % 3600) / 60);
+    const secs = diff % 60;
+
+    broadcastDurationEl.textContent =
+      `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+}
+
+// Start the clock pulse
+setInterval(updateStudioClock, 1000);
+updateStudioClock();
