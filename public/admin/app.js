@@ -72,6 +72,10 @@ const liveIndicator = document.getElementById('live-indicator');
 const recordingIdEl = document.getElementById('recording-id');
 const logoutBtn = document.getElementById('logout-btn');
 const listenerCountEl = document.getElementById('listener-count');
+const muteMicBtn = document.getElementById('mute-mic-btn');
+const muteIcon = document.getElementById('mute-icon');
+
+let isMuted = false;
 
 // Chat UI
 const chatMessages = document.getElementById('chat-messages');
@@ -729,6 +733,7 @@ async function startBroadcast(channelId) {
     isLive = true;
     if (jinglePadSection) jinglePadSection.classList.remove('hidden');
     if (callInSection) callInSection.classList.remove('hidden');
+    if (muteMicBtn) muteMicBtn.disabled = false;
 
     // Visual Clock Start
     broadcastStartTime = Date.now();
@@ -768,6 +773,13 @@ stopBroadcastBtn.addEventListener('click', () => {
   startBroadcastBtn.disabled = false;
   stopBroadcastBtn.disabled = true;
   startRecordingBtn.disabled = true;
+  if (muteMicBtn) {
+    muteMicBtn.disabled = true;
+    muteMicBtn.classList.remove('is-muted');
+    isMuted = false;
+    if (muteIcon) muteIcon.setAttribute('data-lucide', 'mic');
+    if (window.lucide) lucide.createIcons();
+  }
   broadcastStatus.textContent = 'Broadcast stopped';
   liveIndicator.textContent = '● Offline';
   liveIndicator.className = 'indicator offline';
@@ -2238,3 +2250,31 @@ function updateStudioClock() {
 // Start the clock pulse
 setInterval(updateStudioClock, 1000);
 updateStudioClock();
+
+// --- MUTE SYSTEM ---
+if (muteMicBtn) {
+  muteMicBtn.addEventListener('click', () => {
+    if (!mediaStream) return;
+
+    isMuted = !isMuted;
+
+    // Toggle audio tracks
+    mediaStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
+
+    // Update UI
+    if (isMuted) {
+      muteMicBtn.classList.add('is-muted');
+      muteMicBtn.title = 'Unmute Microphone';
+      if (muteIcon) muteIcon.setAttribute('data-lucide', 'mic-off');
+    } else {
+      muteMicBtn.classList.remove('is-muted');
+      muteMicBtn.title = 'Mute Microphone';
+      if (muteIcon) muteIcon.setAttribute('data-lucide', 'mic');
+    }
+
+    if (window.lucide) lucide.createIcons();
+    console.log(`[Audio] Microphone ${isMuted ? 'MUTED' : 'UNMUTED'}`);
+  });
+}
