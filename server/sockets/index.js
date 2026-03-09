@@ -158,6 +158,9 @@ function setupSocketHandlers(io) {
 
       webrtcService.stopBroadcast(channelId);
       console.log(`Broadcast stopped manually on channel ${channelId}`);
+
+      // Auto-DJ takes over immediately after manual stop
+      startAutoDJ(channelId, io);
     });
 
     socket.on('offer', (data) => {
@@ -354,10 +357,24 @@ function setupSocketHandlers(io) {
     );
   }
 
-  // Handle Auto-DJ events
   autoDJService.on('no-media', ({ channelId }) => {
     io.to(channelId).emit('autodj-no-media', { channelId });
   });
+
+  // ── ON BY DEFAULT: Boot-up Activation ────────────────────────
+  (async () => {
+    console.log('[AutoDJ] Boot-up sequence: Activating all inactive stations...');
+    try {
+      const channels = await ChannelModel.findAll();
+      for (const ch of channels) {
+        if (!webrtcService.isChannelLive(ch.id)) {
+          startAutoDJ(ch.id, io);
+        }
+      }
+    } catch (e) {
+      console.error('[AutoDJ] Boot-up activation failed:', e.message);
+    }
+  })();
 }
 
 module.exports = setupSocketHandlers;
