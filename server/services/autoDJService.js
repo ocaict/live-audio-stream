@@ -46,12 +46,30 @@ class AutoDJService extends EventEmitter {
         }
 
         // Build the queue from the media library
-        const queue = await MediaLibraryModel.findByChannelId(channelId);
+        const library = await MediaLibraryModel.findByChannelId(channelId);
 
-        if (!queue || queue.length === 0) {
+        if (!library || library.length === 0) {
             console.log(`[AutoDJ] No media in library for channel ${channelId}. Auto-DJ aborted.`);
             this.emit('no-media', { channelId });
             return;
+        }
+
+        // --- Auto-Jingle Injection (Rotation Logic) ---
+        const musicTracks = library.filter(t => t.category === 'music' || t.category === 'show');
+        const jingles = library.filter(t => t.category === 'jingle' || t.category === 'ad');
+
+        let queue = [];
+        if (musicTracks.length === 0) {
+            queue = library; // Fallback: just play whatever is there if there's no music
+        } else {
+            for (let i = 0; i < musicTracks.length; i++) {
+                queue.push(musicTracks[i]);
+                // Insert a random jingle after every 3 music/show tracks
+                if ((i + 1) % 3 === 0 && jingles.length > 0) {
+                    const randomJingle = jingles[Math.floor(Math.random() * jingles.length)];
+                    queue.push(randomJingle);
+                }
+            }
         }
 
         const session = {
@@ -74,15 +92,16 @@ class AutoDJService extends EventEmitter {
         const session = this.sessions.get(channelId);
         if (!session || !session.isRunning) return;
 
-        const { queue, currentIndex } = session;
+        let { queue, currentIndex } = session;
 
         if (currentIndex >= queue.length) {
             // Loop back to start
             console.log(`[AutoDJ] Queue complete for ${channelId}, looping.`);
             session.currentIndex = 0;
+            currentIndex = 0;
         }
 
-        const track = queue[session.currentIndex];
+        const track = queue[currentIndex];
         session.currentIndex++;
 
         if (!track || !track.cloud_url) {
@@ -118,6 +137,8 @@ class AutoDJService extends EventEmitter {
             .audioFrequency(SAMPLE_RATE)
             .audioCodec('pcm_s16le')
             .format('s16le')
+            // Volume Normalization: Broadcast standard -16 LUFS
+            .audioFilter('loudnorm=I=-16:TP=-1.5:LRA=11')
             .on('start', (cmd) => {
                 console.log(`[AutoDJ] FFmpeg started: ${cmd.substring(0, 80)}...`);
             })

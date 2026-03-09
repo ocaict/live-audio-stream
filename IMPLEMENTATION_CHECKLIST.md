@@ -53,15 +53,15 @@
 *   [ ] **Testing**: Implement Jest for core services and API unit testing.
 
 ### 📻 Phase 7: Auto-DJ & 24/7 Playout System (Future)
-*   [ ] **Synchronous Server Streaming**: Transition from VOD downloads to a real-time Auto-DJ backend that streams recorded `.mp3` chunks via FFmpeg to WebRTC when a broadcaster goes offline.
+*   [x] **Synchronous Server Streaming**: Transition from VOD downloads to a real-time Auto-DJ backend that streams recorded `.mp3` chunks via FFmpeg to socket listeners when a broadcaster goes offline.
 *   [ ] **Audio Crossfading**: Eliminate "dead air" with overlapping 3-second audio transitions between recordings, ensuring a high-energy flow.
 *   [ ] **Jingles & Station Sweepers**: Automatic injection of short, branded audio clips between shows to maintain an actively managed station feel.
 *   [ ] **Playlist Scheduling**: Visual Drag-and-Drop timeline in the Admin Dashboard for queueing daily automated playback.
-*   [ ] **Dynamic Metadata Sync**: Listener UI transitions fluidly from "LIVE" to "NOW PLAYING: [Title]" via Socket.IO, keeping the live chat room engaged during replays.
+*   [x] **Dynamic Metadata Sync**: Listener UI transitions fluidly from "LIVE" to "NOW PLAYING: [Title]" via Socket.IO, keeping the live chat room engaged during replays.
 
 ---
-Which step would you like to tackle next?
+Which step would you like to tackle next based on the best practices?
 
-🚀 Build the Auto-DJ playout engine (FFmpeg → WebRTC streaming when broadcaster is offline)
-🎛️ Build the Queue/Rotation UI (define playback logic for the auto-DJ)
-🎨 Polish the current Media Library UI first (drag-to-reorder, preview player, etc.)
+🔈 **[x] 1. Volume Normalization & Auto-Jingles** (Implemented via FFmpeg loudnorm and AutoDJ queue rotation)
+🎛️ **2. Build the Queue/Rotation UI** (define playback logic and schedules)
+🎵 **3. Audio Crossfading** (Smooth transitions between tracks)
