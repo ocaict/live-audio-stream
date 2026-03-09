@@ -116,6 +116,13 @@ const clockOnAirIndicator = document.getElementById('clock-on-air-indicator');
 const utcTimeDisplay = document.getElementById('utc-time-display');
 const localTimeDisplay = document.getElementById('local-time-display');
 
+// Playback Bar DOM refs
+const playbackBar = document.getElementById('playback-bar');
+const audioPlayer = document.getElementById('audio-player');
+const pbTitle = document.getElementById('pb-title');
+const pbMeta = document.getElementById('pb-meta');
+const closePbBtn = document.getElementById('close-pb-btn');
+
 let pendingCallers = [];
 let activeCall = null; // { socketId, username, pc, streamNode, gainNode }
 let broadcastStartTime = null;
@@ -1191,19 +1198,33 @@ async function promoteRecording(id) {
 }
 
 async function playRecording(id) {
-  let player = document.getElementById('audio-player');
-  if (!player) {
-    player = document.createElement('div');
-    player.id = 'audio-player';
-    player.className = 'show';
-    document.querySelector('.recordings-section').appendChild(player);
-  }
+  if (!playbackBar || !audioPlayer) return;
 
-  // Use the direct API URL for the audio source. 
-  // This avoids CORS issues with FETCH when redirected to Cloudinary,
-  // and allows for proper streaming/seeking.
+  const recording = allRecordings.find(r => r.id === id);
+  const title = recording ? (recording.title || recording.filename) : 'Recording';
+
+  // Setup Bar UI
+  if (pbTitle) pbTitle.textContent = title;
+  if (pbMeta) pbMeta.textContent = recording ? new Date(recording.created_at).toLocaleString() : 'Streaming...';
+
   const streamUrl = `${API_URL}/api/recordings/${id}/stream`;
-  player.innerHTML = `<audio controls autoplay src="${streamUrl}"></audio>`;
+  audioPlayer.src = streamUrl;
+
+  playbackBar.classList.remove('hidden');
+  audioPlayer.play().catch(err => console.warn('[Playback] Autoplay failed:', err));
+}
+
+// Wire up close button
+if (closePbBtn) {
+  closePbBtn.addEventListener('click', () => {
+    if (audioPlayer) {
+      audioPlayer.pause();
+      audioPlayer.src = '';
+    }
+    if (playbackBar) {
+      playbackBar.classList.add('hidden');
+    }
+  });
 }
 
 function formatSize(bytes) {

@@ -619,7 +619,22 @@
     </div>
   </div>
 
-  <audio id="audio-player"></audio>
+  <!-- Global Playback Bar -->
+  <div id="playback-bar" class="playback-bar hidden">
+    <div class="playback-info">
+      <i data-lucide="play-circle" class="play-icon"></i>
+      <div class="track-details">
+        <span id="pb-title">Recording Title</span>
+        <span id="pb-meta" class="small">Streaming...</span>
+      </div>
+    </div>
+    <div class="playback-controls">
+      <audio id="audio-player" controls autoplay></audio>
+    </div>
+    <button id="close-pb-btn" class="close-pb" title="Close Player">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socketUrl = window.SERVER_URL || '';
