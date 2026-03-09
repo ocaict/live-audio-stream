@@ -56,6 +56,10 @@ const channelSelect = document.getElementById('channel-select');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeIcon = document.getElementById('volume-icon');
 
+// Tune-In Overlay Elements
+const tuneInOverlay = document.getElementById('tune-in-overlay');
+const tuneInBtn = document.getElementById('tune-in-btn');
+
 // Chat UI
 const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
@@ -104,6 +108,28 @@ if (volumeIcon) {
       audioPlayer.muted = true;
       volumeSlider.value = 0;
       updateVolumeIcon(0);
+    }
+  });
+}
+
+// Logic for Premium "Tune In" Overlay
+if (tuneInBtn) {
+  tuneInBtn.addEventListener('click', () => {
+    console.log('[TuneIn] User initiated playback');
+
+    // 1. Hide the overlay with the fade transition
+    tuneInOverlay.classList.add('hidden');
+
+    // 2. Trigger audio start logic
+    // If the user previously had a channel intent, calling startListening() 
+    // will now succeed because of the user gesture.
+    if (!State.intent) {
+      // If no intent yet, start the current selected channel
+      startListening();
+    } else {
+      // If they already had intent (from localStorage), force a reconnect
+      // to ensure the AudioContext starts correctly now that we have a gesture.
+      connectToBroadcast();
     }
   });
 }
@@ -413,7 +439,7 @@ function attemptReconnect() {
   reconnectAttempts++;
   const delay = reconnectDelay * Math.pow(1.5, reconnectAttempts - 1);
 
-  updateStatus(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`, 'connecting');
+  updateStatus(`Reconnecting... (${reconnectAttempts} / ${maxReconnectAttempts})`, 'connecting');
 
   setTimeout(async () => {
     if (!State.intent || !State.channelId) {
@@ -513,7 +539,7 @@ socket.on('channels-list', (channelsData) => {
 let lastChannelLiveEvent = null;
 
 socket.on('channel-live', (data) => {
-  const eventKey = `${data.channelId}-${data.isLive}`;
+  const eventKey = `${data.channelId} -${data.isLive} `;
   if (lastChannelLiveEvent === eventKey) {
     return;
   }
@@ -569,7 +595,7 @@ socket.on('listener-count', (data) => {
     const icon = listenerCountEl.querySelector('i, svg');
     listenerCountEl.innerHTML = '';
     if (icon) listenerCountEl.appendChild(icon);
-    listenerCountEl.appendChild(document.createTextNode(` ${data.count}`));
+    listenerCountEl.appendChild(document.createTextNode(` ${data.count} `));
   }
 
   const channel = State.channels.find(c => c.id === data.channelId);
@@ -656,12 +682,12 @@ function appendMessage(msg) {
   const isOwn = msg.username === currentUsername;
 
   const div = document.createElement('div');
-  div.className = `message-item ${isOwn ? 'own' : ''}`;
+  div.className = `message - item ${isOwn ? 'own' : ''} `;
 
   div.innerHTML = `
-    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-    <div class="chat-bubble">${msg.content}</div>
-  `;
+        < div class="message-meta" > ${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div >
+          <div class="chat-bubble">${msg.content}</div>
+      `;
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -892,17 +918,17 @@ socket.on('dj-audio-chunk', (payload) => {
 
 socket.on('autodj-track-changed', (meta) => {
   if (meta.channelId !== State.channelId) return;
-  console.log(`[AutoDJ] Now playing: "${meta.title}" (${meta.category})`);
+  console.log(`[AutoDJ] Now playing: "${meta.title}"(${meta.category})`);
 
   // Update the UI status bar with the current track
   const nowPlayingEl = document.getElementById('now-playing-bar');
   if (nowPlayingEl) {
     const categoryEmoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' };
     const emoji = categoryEmoji[meta.category] || '🎵';
-    nowPlayingEl.textContent = `${emoji} Now Playing: ${meta.title}`;
+    nowPlayingEl.textContent = `${emoji} Now Playing: ${meta.title} `;
     nowPlayingEl.style.display = 'block';
   }
-  updateStatus(`📻 Auto-DJ: ${meta.title}`, 'live');
+  updateStatus(`📻 Auto - DJ: ${meta.title} `, 'live');
 });
 
 socket.on('autodj-stopped', ({ channelId, reason }) => {
