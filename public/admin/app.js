@@ -484,9 +484,9 @@ function renderChannelSelector() {
     }
   }
 
-  startBroadcastBtn.disabled = !selectedChannelId;
-  editChannelBtn.disabled = !selectedChannelId;
-  deleteChannelBtn.disabled = !selectedChannelId;
+  startBroadcastBtn.disabled = !selectedChannelId || isLive;
+  editChannelBtn.disabled = !selectedChannelId || isLive;
+  deleteChannelBtn.disabled = !selectedChannelId || isLive;
   shareChannelBtn.disabled = !selectedChannelId;
 }
 
@@ -517,8 +517,8 @@ channelSelect.addEventListener('change', () => {
   }
 
   startRecordingBtn.disabled = !isLive;
-  editChannelBtn.disabled = !selectedChannelId;
-  deleteChannelBtn.disabled = !selectedChannelId;
+  editChannelBtn.disabled = !selectedChannelId || isLive;
+  deleteChannelBtn.disabled = !selectedChannelId || isLive;
   shareChannelBtn.disabled = !selectedChannelId;
   sharePanel.classList.add('hidden');
   // Refresh analytics/charts for the new channel
@@ -1651,7 +1651,8 @@ let monitorNextStartTime = 0;
 let monitorVolume = 0.5;
 
 function setAutoDJState(running) {
-  if (autoDJStartBtn) autoDJStartBtn.disabled = running;
+  const currentlyLive = isLive || myChannels.find(c => String(c.id) === String(selectedChannelId))?.isLive;
+  if (autoDJStartBtn) autoDJStartBtn.disabled = running || currentlyLive;
   if (autoDJStopBtn) autoDJStopBtn.disabled = !running;
   if (autoDJSkipBtn) autoDJSkipBtn.disabled = !running;
 
