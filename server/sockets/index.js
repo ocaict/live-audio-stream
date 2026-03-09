@@ -78,6 +78,25 @@ function setupSocketHandlers(io) {
       MessageModel.findByChannelId(channelId).then(history => {
         socket.emit('chat-history', { channelId, messages: history });
       }).catch(e => console.error('Error sending chat history:', e.message));
+
+      // Auto-DJ: On by default for listeners joining an inactive station
+      if (role === 'listener') {
+        if (autoDJService.isRunning(channelId)) {
+          const track = autoDJService.getCurrentTrack(channelId);
+          socket.emit('autodj-started', { channelId });
+          if (track) {
+            socket.emit('autodj-track-changed', {
+              channelId,
+              title: track.title,
+              category: track.category,
+              tags: track.tags
+            });
+          }
+        } else if (!webrtcService.isChannelLive(channelId)) {
+          // If station is dead air, bring it to life
+          startAutoDJ(channelId, io);
+        }
+      }
     });
 
     socket.on('leave-channel', () => {
@@ -111,37 +130,6 @@ function setupSocketHandlers(io) {
         MessageModel.findByChannelId(channelId).then(history => {
           socket.emit('chat-history', { channelId, messages: history });
         }).catch(e => console.error('Error sending chat history to listener:', e.message));
-
-        // Check if Auto-DJ is already running for this channel
-        if (autoDJService.isRunning(channelId)) {
-          const track = autoDJService.getCurrentTrack(channelId);
-          socket.emit('autodj-started', { channelId });
-          if (track) {
-            socket.emit('autodj-track-changed', {
-              channelId,
-              title: track.title,
-              category: track.category,
-              tags: track.tags
-            });
-          }
-        }
-      } else {
-        // If not live, check if we can start Auto-DJ (just in case)
-        if (!autoDJService.isRunning(channelId)) {
-          startAutoDJ(channelId, io);
-        } else {
-          // Already running, just inform the listener
-          const track = autoDJService.getCurrentTrack(channelId);
-          socket.emit('autodj-started', { channelId });
-          if (track) {
-            socket.emit('autodj-track-changed', {
-              channelId,
-              title: track.title,
-              category: track.category,
-              tags: track.tags
-            });
-          }
-        }
       }
     });
 
