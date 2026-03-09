@@ -176,16 +176,16 @@ class AutoDJService extends EventEmitter {
             if (buffer.length >= CHUNK_BYTES) {
                 const chunk = buffer.slice(0, CHUNK_BYTES);
                 buffer = buffer.slice(CHUNK_BYTES);
-                session.emitChunk(chunk);
+                session.emitChunk({ chunk, trackId: track.id });
             } else if (ended && buffer.length > 0) {
                 // Drain remaining bytes
-                session.emitChunk(buffer);
+                session.emitChunk({ chunk: buffer, trackId: track.id });
                 buffer = Buffer.alloc(0);
             } else if (ended && buffer.length === 0) {
                 // Track finished, move to next
                 clearInterval(chunkTimer);
-                // Small gap between tracks for transition
-                setTimeout(() => this._playNext(channelId), 800);
+                // Reduce the gap so crossfading begins immediately
+                setTimeout(() => this._playNext(channelId), 50);
             }
         }, CHUNK_SIZE_MS);
     }

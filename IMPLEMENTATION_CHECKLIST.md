@@ -63,5 +63,5 @@
 Which step would you like to tackle next based on the best practices?
 
 🔈 **[x] 1. Volume Normalization & Auto-Jingles** (Implemented via FFmpeg loudnorm and AutoDJ queue rotation)
-🎛️ **2. Build the Queue/Rotation UI** (define playback logic and schedules)
-🎵 **3. Audio Crossfading** (Smooth transitions between tracks)
+🎛️ **[x] 2. Build the Queue/Rotation UI** (Drag and Drop in Admin Dashboard)
+🎵 **[x] 3. Audio Crossfading** (Smooth transitions between tracks via Web Audio GainNodes)

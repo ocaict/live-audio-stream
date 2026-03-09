@@ -745,33 +745,82 @@ loadChannels();
 loadRTCConfig();
 
 // =============================================
-// AUTO-DJ LISTENER: PCM Audio Decoder
+// AUTO-DJ LISTENER: PCM Audio Decoder with Crossfading
 // =============================================
 let djAudioCtx = null;
-let djNextStartTime = 0;
 let djIsActive = false;
+
+// We now track the playback cursor independently per track
+// so we can overlap (crossfade) them.
+const trackStates = new Map();
+let currentTrackId = null;
 
 const DJ_SAMPLE_RATE = 44100;
 const DJ_CHANNELS = 1;
+const CROSSFADE_DURATION = 3.0; // 3 seconds overlap
 
 function initDJAudio() {
   if (!djAudioCtx) {
     djAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: DJ_SAMPLE_RATE });
-    djNextStartTime = djAudioCtx.currentTime;
   }
   if (djAudioCtx.state === 'suspended') {
     djAudioCtx.resume();
   }
 }
 
-function scheduleChunk(rawBuffer) {
+function scheduleChunk(rawBuffer, trackId) {
   if (!djAudioCtx) return;
+
+  // Initialize track state if this is a new track
+  if (!trackStates.has(trackId)) {
+    const gainNode = djAudioCtx.createGain();
+    gainNode.connect(djAudioCtx.destination);
+
+    // Start silent, we will fade in
+    gainNode.gain.setValueAtTime(0, djAudioCtx.currentTime);
+
+    trackStates.set(trackId, {
+      nextStartTime: djAudioCtx.currentTime + 0.1, // Slight buffer
+      gainNode: gainNode,
+      fadingIn: false
+    });
+
+    // If there is an existing track playing, tell it to fade out
+    if (currentTrackId && currentTrackId !== trackId && trackStates.has(currentTrackId)) {
+      const oldState = trackStates.get(currentTrackId);
+      const currTime = djAudioCtx.currentTime;
+
+      // Stop previous track's fade-in if it was still happening
+      oldState.gainNode.gain.cancelScheduledValues(currTime);
+      oldState.gainNode.gain.setValueAtTime(oldState.gainNode.gain.value, currTime);
+
+      // Fade out over X seconds
+      oldState.gainNode.gain.linearRampToValueAtTime(0, currTime + CROSSFADE_DURATION);
+
+      // Clean up the old track state memory after fade completes
+      const toDelete = currentTrackId;
+      setTimeout(() => {
+        trackStates.delete(toDelete);
+      }, (CROSSFADE_DURATION + 1) * 1000);
+    }
+
+    currentTrackId = trackId;
+  }
+
+  const state = trackStates.get(trackId);
+
+  // Crossfade Trigger: Fade in the new track
+  if (!state.fadingIn) {
+    const currTime = djAudioCtx.currentTime;
+    state.gainNode.gain.linearRampToValueAtTime(1.0, currTime + CROSSFADE_DURATION);
+    state.fadingIn = true;
+  }
 
   // Convert raw bytes (PCM s16le) -> Float32 samples
   const int16 = new Int16Array(rawBuffer);
   const float32 = new Float32Array(int16.length);
   for (let i = 0; i < int16.length; i++) {
-    float32[i] = int16[i] / 32768.0; // Normalize to [-1, 1]
+    float32[i] = int16[i] / 32768.0;
   }
 
   const audioBuffer = djAudioCtx.createBuffer(DJ_CHANNELS, float32.length, DJ_SAMPLE_RATE);
@@ -779,22 +828,24 @@ function scheduleChunk(rawBuffer) {
 
   const source = djAudioCtx.createBufferSource();
   source.buffer = audioBuffer;
-  source.connect(djAudioCtx.destination);
+  source.connect(state.gainNode);
 
-  // Schedule it gaplessly — no silence between chunks
+  // Schedule it gaplessly for THIS track
   const duration = audioBuffer.duration;
   const currentTime = djAudioCtx.currentTime;
-  const startAt = Math.max(djNextStartTime, currentTime + 0.05);
+  const startAt = Math.max(state.nextStartTime, currentTime + 0.05);
+
   source.start(startAt);
-  djNextStartTime = startAt + duration;
+  state.nextStartTime = startAt + duration;
 }
 
 function stopDJAudio() {
   if (djAudioCtx) {
     djAudioCtx.close();
     djAudioCtx = null;
-    djNextStartTime = 0;
   }
+  trackStates.clear();
+  currentTrackId = null;
   djIsActive = false;
 }
 
@@ -818,12 +869,13 @@ socket.on('autodj-started', ({ channelId }) => {
   if (pulseRing) pulseRing.style.display = 'block';
 });
 
-socket.on('dj-audio-chunk', (data) => {
+socket.on('dj-audio-chunk', (payload) => {
   if (!djIsActive) return;
   try {
-    // data arrives as ArrayBuffer or Buffer
-    const buffer = data instanceof ArrayBuffer ? data : data.buffer || data;
-    scheduleChunk(buffer);
+    const rawBuffer = payload.chunk || payload;
+    const trackId = payload.trackId || 'unknown';
+    const buffer = rawBuffer instanceof ArrayBuffer ? rawBuffer : rawBuffer.buffer || rawBuffer;
+    scheduleChunk(buffer, trackId);
   } catch (e) {
     console.error('[AutoDJ] Chunk decode error:', e);
   }
