@@ -18,6 +18,7 @@ router.use(authenticateToken);
 
 router.get('/', mediaController.list);
 router.post('/upload', upload.single('mediaFile'), mediaController.upload);
+router.put('/reorder', mediaController.reorder);
 router.patch('/:id/metadata', mediaController.update);
 router.delete('/:id', mediaController.delete);
 

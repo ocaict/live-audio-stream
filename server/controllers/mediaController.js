@@ -138,6 +138,36 @@ const mediaController = {
             console.error('Error updating media:', error);
             res.status(500).json({ error: error.message });
         }
+    },
+
+    async reorder(req, res) {
+        try {
+            const { channelId, orderedIds } = req.body;
+            if (!channelId || !Array.isArray(orderedIds)) {
+                return res.status(400).json({ error: 'channelId and orderedIds array are required' });
+            }
+
+            // Verify channel ownership
+            const myChannels = await ChannelModel.findByAdminId(req.user.id);
+            if (!myChannels.some(c => c.id === channelId)) {
+                return res.status(403).json({ error: 'Not authorized for this channel' });
+            }
+
+            // Since MediaLibraryModel.findByChannelId orders by created_at DESC,
+            // we assign the most recent timestamp to the first item (index 0).
+            const now = Date.now();
+            const promises = orderedIds.map((id, index) => {
+                const artificialDate = new Date(now - (index * 1000)).toISOString();
+                return MediaLibraryModel.updateMetadata(id, { created_at: artificialDate });
+            });
+
+            await Promise.all(promises);
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Error reordering media:', error);
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 

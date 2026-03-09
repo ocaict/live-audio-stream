@@ -1204,7 +1204,10 @@ function renderMedia(items) {
     const meta = CATEGORY_META[item.category] || { label: item.category, color: '#94a3b8' };
     const date = new Date(item.created_at).toLocaleDateString();
     return `
-      <div class="recording-item" data-id="${item.id}">
+      <div class="recording-item draggable-media" data-id="${item.id}" draggable="true">
+        <div class="drag-handle" style="cursor: grab; color: var(--text-dim); padding-right: 12px;">
+          <i data-lucide="grip-vertical"></i>
+        </div>
         <div class="rec-info">
           <div class="rec-header">
             <span class="rec-title" title="${item.title}">${item.title}</span>
@@ -1216,19 +1219,96 @@ function renderMedia(items) {
           </div>
         </div>
         <div class="rec-actions">
-          ${item.cloud_url ? `<a href="${item.cloud_url}" target="_blank" class="btn-icon play" title="Preview"><i data-lucide="play-circle"></i></a>` : ''}
+          ${item.cloud_url ? `<button class="btn-icon play" title="Preview" onclick="previewMedia('${item.cloud_url}')"><i data-lucide="play-circle"></i></button>` : ''}
           <button class="btn-icon delete" title="Delete" onclick="deleteMedia('${item.id}')"><i data-lucide="trash-2"></i></button>
         </div>
       </div>`;
   }).join('');
 
   lucide.createIcons();
+  setupMediaDragAndDrop();
+}
+
+let currentPreviewAudio = null;
+window.previewMedia = (url) => {
+  if (currentPreviewAudio) {
+    currentPreviewAudio.pause();
+    if (currentPreviewAudio.src === url) {
+      currentPreviewAudio = null; // Toggle pause if same track clicked
+      return;
+    }
+  }
+  currentPreviewAudio = new Audio(url);
+  currentPreviewAudio.play().catch(e => console.error('Preview error:', e));
+};
+
+function setupMediaDragAndDrop() {
+  const draggables = document.querySelectorAll('.draggable-media');
+  if (!draggables.length || !mediaList) return;
+
+  draggables.forEach(draggable => {
+    draggable.addEventListener('dragstart', () => {
+      draggable.classList.add('dragging');
+      draggable.style.opacity = '0.5';
+    });
+
+    draggable.addEventListener('dragend', async () => {
+      draggable.classList.remove('dragging');
+      draggable.style.opacity = '1';
+
+      const orderedIds = [...mediaList.querySelectorAll('.draggable-media')].map(el => el.dataset.id);
+
+      // Update local allMedia array implicitly, but re-render isn't needed right now since UI is already ordered
+      allMedia.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+
+      // Save new order to backend
+      try {
+        const token = localStorage.getItem('auth_token');
+        await fetch(`${API_URL}/api/media/reorder`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ channelId: selectedChannelId, orderedIds })
+        });
+        console.log('Media rotation order saved!');
+      } catch (err) {
+        console.error('Failed to save media order:', err);
+      }
+    });
+  });
+
+  mediaList.addEventListener('dragover', e => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(mediaList, e.clientY);
+    const draggable = document.querySelector('.dragging');
+    if (!draggable) return;
+    if (afterElement == null) {
+      mediaList.appendChild(draggable);
+    } else {
+      mediaList.insertBefore(draggable, afterElement);
+    }
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.draggable-media:not(.dragging)')];
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 async function deleteMedia(id) {
   if (!confirm('Delete this media file? This cannot be undone.')) return;
   try {
-    const res = await apiFetch(`/api/media/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/ api / media / ${id}`, { method: 'DELETE' });
     if (res.ok) {
       allMedia = allMedia.filter(m => m.id !== id);
       renderMedia(allMedia);
@@ -1327,16 +1407,16 @@ if (uploadMediaForm) {
 // PHASE 7 — AUTO-DJ ADMIN CONTROLS
 // =============================================
 const autoDJStartBtn = document.getElementById('autodj-start-btn');
-const autoDJStopBtn  = document.getElementById('autodj-stop-btn');
-const autoDJSkipBtn  = document.getElementById('autodj-skip-btn');
+const autoDJStopBtn = document.getElementById('autodj-stop-btn');
+const autoDJSkipBtn = document.getElementById('autodj-skip-btn');
 const autoDJStatusBadge = document.getElementById('autodj-status-badge');
-const autoDJNowPlaying  = document.getElementById('autodj-now-playing');
-const autoDJTrackTitle  = document.getElementById('autodj-track-title');
+const autoDJNowPlaying = document.getElementById('autodj-now-playing');
+const autoDJTrackTitle = document.getElementById('autodj-track-title');
 
 function setAutoDJState(running) {
   if (autoDJStartBtn) autoDJStartBtn.disabled = running;
   if (running) {
-    autoDJStatusBadge.textContent = '� Live';
+    autoDJStatusBadge.textContent = '\uD83D\uDCFB Live';
     autoDJStatusBadge.style.cssText = 'background:rgba(0,242,234,0.15);color:#00f2ea;border:1px solid rgba(0,242,234,0.4);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:500;white-space:nowrap;';
   } else {
     autoDJStatusBadge.textContent = '● Offline';
