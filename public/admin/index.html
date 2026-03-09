@@ -28,6 +28,74 @@
     </div>
   </div>
 
+  <!-- Create Playlist Modal -->
+  <div id="playlist-modal" class="modal hidden">
+    <div class="modal-content glass-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2><i data-lucide="plus-circle"></i> Create New Playlist</h2>
+        <button id="close-playlist-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="playlist-form">
+          <div class="field">
+            <label>Playlist Name</label>
+            <input type="text" id="playlist-name" placeholder="e.g. Monday Morning Coffee" required>
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea id="playlist-description" placeholder="Optional description..."></textarea>
+          </div>
+          <button type="submit" class="btn primary full-width" style="margin-top: 1rem;">
+            <span>Create Playlist</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Schedule Modal -->
+  <div id="schedule-modal" class="modal hidden">
+    <div class="modal-content glass-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2><i data-lucide="clock"></i> Add Program Slot</h2>
+        <button id="close-schedule-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="schedule-form">
+          <div class="field">
+            <label>Select Playlist</label>
+            <select id="schedule-playlist-select" required class="custom-select-small"></select>
+          </div>
+          <div class="field">
+            <label>Day of Week</label>
+            <select id="schedule-day" required class="custom-select-small">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+          <div class="row-flex" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="field">
+              <label>Start Time (24h)</label>
+              <input type="time" id="schedule-start" step="60" required>
+            </div>
+            <div class="field">
+              <label>End Time (24h)</label>
+              <input type="time" id="schedule-end" step="60" required>
+            </div>
+          </div>
+          <button type="submit" class="btn primary full-width" style="margin-top: 1rem;">
+            <span>Add to Schedule</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Login Screen -->
   <div id="login-screen" class="screen full-screen hidden">
     <div class="login-wrapper">
@@ -359,10 +427,42 @@
               </button>
             </div>
           </div>
+          <p class="section-hint">Current library items. Drag items into playlists to schedule shows.</p>
           <div id="media-list" class="recordings-list">
             <div class="empty-state">
               <i data-lucide="audio-lines"></i>
               <p>No custom media uploaded yet.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Playlists & Schedule -->
+        <section class="section-card glass-card">
+          <div class="section-header">
+            <h2><i data-lucide="calendar"></i> Playlists & Schedule</h2>
+            <div class="header-actions">
+              <button id="create-playlist-btn" class="btn secondary-small">
+                <i data-lucide="plus-circle"></i> New Playlist
+              </button>
+              <button id="add-schedule-btn" class="btn primary-small">
+                <i data-lucide="clock"></i> Add Program Slot
+              </button>
+            </div>
+          </div>
+
+          <div class="split-view">
+            <div class="sidebar-list">
+              <h3><i data-lucide="list"></i> Playlists</h3>
+              <div id="playlists-list" class="mini-list">
+                <div class="empty-state small">No playlists yet.</div>
+              </div>
+            </div>
+
+            <div class="main-content-view">
+              <h3><i data-lucide="calendar-check"></i> Weekly Program</h3>
+              <div id="schedule-table" class="schedule-table-container">
+                <div class="empty-state small">No scheduled programs yet.</div>
+              </div>
             </div>
           </div>
         </section>

@@ -18,6 +18,8 @@
 const { EventEmitter } = require('events');
 const ffmpeg = require('fluent-ffmpeg');
 const MediaLibraryModel = require('../models/mediaLibrary');
+const PlaylistModel = require('../models/playlist');
+const ScheduleModel = require('../models/schedule');
 
 const CHUNK_SIZE_MS = 100; // emit a chunk every 100ms worth of audio
 const SAMPLE_RATE = 44100;
@@ -29,7 +31,7 @@ const CHUNK_BYTES = Math.floor(BYTES_PER_MS * CHUNK_SIZE_MS);
 class AutoDJService extends EventEmitter {
     constructor() {
         super();
-        // Map of channelId => { ffmpegProcess, queue, currentIndex, isRunning, isPaused }
+        // Map of channelId => { ffmpegProcess, queue, currentIndex, isRunning, isPaused, activeScheduleId }
         this.sessions = new Map();
     }
 
@@ -45,29 +47,46 @@ class AutoDJService extends EventEmitter {
             return;
         }
 
-        // Build the queue from the media library
-        const library = await MediaLibraryModel.findByChannelId(channelId);
+        let queue = [];
+        let activeScheduleId = null;
 
-        if (!library || library.length === 0) {
-            console.log(`[AutoDJ] No media in library for channel ${channelId}. Auto-DJ aborted.`);
-            this.emit('no-media', { channelId });
-            return;
+        // --- Priority Layer 1: Check for active schedule ---
+        try {
+            const activeSchedule = await ScheduleModel.findActiveSchedule(channelId);
+            if (activeSchedule) {
+                console.log(`[AutoDJ] Found active schedule ${activeSchedule.id} for channel ${channelId}`);
+                const playlistItems = await PlaylistModel.getMedia(activeSchedule.playlist_id);
+                if (playlistItems && playlistItems.length > 0) {
+                    queue = playlistItems.map(item => item.media_library);
+                    activeScheduleId = activeSchedule.id;
+                }
+            }
+        } catch (e) {
+            console.warn(`[AutoDJ] Schedule lookup failed: ${e.message}. Falling back to general library.`);
         }
 
-        // --- Auto-Jingle Injection (Rotation Logic) ---
-        const musicTracks = library.filter(t => t.category === 'music' || t.category === 'show');
-        const jingles = library.filter(t => t.category === 'jingle' || t.category === 'ad');
+        // --- Priority Layer 2: General library rotation (Fallback) ---
+        if (queue.length === 0) {
+            const library = await MediaLibraryModel.findByChannelId(channelId);
+            if (!library || library.length === 0) {
+                console.log(`[AutoDJ] No media in library/schedule for channel ${channelId}. Auto-DJ aborted.`);
+                this.emit('no-media', { channelId });
+                return;
+            }
 
-        let queue = [];
-        if (musicTracks.length === 0) {
-            queue = library; // Fallback: just play whatever is there if there's no music
-        } else {
-            for (let i = 0; i < musicTracks.length; i++) {
-                queue.push(musicTracks[i]);
-                // Insert a random jingle after every 3 music/show tracks
-                if ((i + 1) % 3 === 0 && jingles.length > 0) {
-                    const randomJingle = jingles[Math.floor(Math.random() * jingles.length)];
-                    queue.push(randomJingle);
+            // --- Auto-Jingle Injection (Shuffle Logic) ---
+            const musicTracks = library.filter(t => t.category === 'music' || t.category === 'show');
+            const jingles = library.filter(t => t.category === 'jingle' || t.category === 'ad');
+
+            if (musicTracks.length === 0) {
+                queue = library;
+            } else {
+                for (let i = 0; i < musicTracks.length; i++) {
+                    queue.push(musicTracks[i]);
+                    if ((i + 1) % 3 === 0 && jingles.length > 0) {
+                        const randomJingle = jingles[Math.floor(Math.random() * jingles.length)];
+                        queue.push(randomJingle);
+                    }
                 }
             }
         }
@@ -79,23 +98,40 @@ class AutoDJService extends EventEmitter {
             ffmpegProcess: null,
             emitChunk,
             emitMeta,
+            activeScheduleId
         };
 
         this.sessions.set(channelId, session);
-        console.log(`[AutoDJ] Starting for channel ${channelId} with ${queue.length} tracks`);
+        console.log(`[AutoDJ] Starting for channel ${channelId} with ${queue.length} tracks (Scheduled: ${!!activeScheduleId})`);
         this.emit('started', { channelId });
 
         this._playNext(channelId);
     }
 
-    _playNext(channelId) {
+    async _playNext(channelId) {
         const session = this.sessions.get(channelId);
         if (!session || !session.isRunning) return;
+
+        // --- Between-Track Check: See if a new schedule has started or the old one ended ---
+        try {
+            const currentSchedule = await ScheduleModel.findActiveSchedule(channelId);
+            const currentSchedId = currentSchedule ? currentSchedule.id : null;
+
+            if (currentSchedId !== session.activeScheduleId) {
+                console.log(`[AutoDJ] Schedule transition detected on ${channelId}. Reloading queue...`);
+                // Reload the entire session state with new queue
+                const { emitChunk, emitMeta } = session;
+                this.stop(channelId);
+                await this.start(channelId, emitChunk, emitMeta);
+                return; // start() will handle playing next
+            }
+        } catch (e) {
+            console.warn(`[AutoDJ] Error checking schedule during transition: ${e.message}`);
+        }
 
         let { queue, currentIndex } = session;
 
         if (currentIndex >= queue.length) {
-            // Loop back to start
             console.log(`[AutoDJ] Queue complete for ${channelId}, looping.`);
             session.currentIndex = 0;
             currentIndex = 0;
@@ -104,8 +140,8 @@ class AutoDJService extends EventEmitter {
         const track = queue[currentIndex];
         session.currentIndex++;
 
-        if (!track || !track.cloud_url) {
-            console.warn(`[AutoDJ] Skipping track with no URL at index ${session.currentIndex}`);
+        if (!track || (!track.cloud_url && !track.filename)) {
+            console.warn(`[AutoDJ] Skipping track at index ${session.currentIndex}`);
             this._playNext(channelId);
             return;
         }

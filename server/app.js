@@ -15,6 +15,8 @@ const recordingsRoutes = require('./routes/recordings');
 const statusRoutes = require('./routes/status');
 const channelRoutes = require('./routes/channels');
 const mediaRoutes = require('./routes/media');
+const playlistRoutes = require('./routes/playlists');
+const scheduleRoutes = require('./routes/schedules');
 
 const app = express();
 const server = http.createServer(app);
@@ -64,6 +66,8 @@ app.use('/api/recordings', recordingsRoutes);
 app.use('/api/status', statusRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/playlists', playlistRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

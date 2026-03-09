@@ -79,6 +79,23 @@ const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatStatus = document.getElementById('chat-status');
 
+// Playlists & Schedule DOM refs
+const playlistsList = document.getElementById('playlists-list');
+const scheduleTable = document.getElementById('schedule-table');
+const createPlaylistBtn = document.getElementById('create-playlist-btn');
+const addScheduleBtn = document.getElementById('add-schedule-btn');
+const playlistModal = document.getElementById('playlist-modal');
+const closePlaylistModal = document.getElementById('close-playlist-modal');
+const playlistForm = document.getElementById('playlist-form');
+const scheduleModal = document.getElementById('schedule-modal');
+const closeScheduleModal = document.getElementById('close-schedule-modal');
+const scheduleForm = document.getElementById('schedule-form');
+const schedulePlaylistSelect = document.getElementById('schedule-playlist-select');
+
+let allPlaylists = [];
+let allSchedules = [];
+let selectedPlaylistId = null;
+
 // Meter Logic
 let meterAnalyser = null;
 let meterAnimationFrame = null;
@@ -448,6 +465,11 @@ function renderChannelSelector() {
 channelSelect.addEventListener('change', () => {
   selectedChannelId = channelSelect.value;
   sessionStorage.setItem('lastSelectedChannelId', selectedChannelId); // Extra persistence
+  if (selectedChannelId) {
+    loadPlaylists();
+    loadSchedules();
+  }
+
   const channel = myChannels.find(c => String(c.id) === String(selectedChannelId));
 
   if (channel?.isLive) {
@@ -1250,6 +1272,7 @@ function renderMedia(items) {
         </div>
         <div class="rec-actions">
           ${item.cloud_url ? `<button class="btn-icon play" title="Preview" onclick="previewMedia('${item.cloud_url}')"><i data-lucide="play-circle"></i></button>` : ''}
+          <button class="btn-icon add-pl" title="Add to selected playlist" onclick="addMediaToSelectedPlaylist('${item.id}')"><i data-lucide="plus"></i></button>
           <button class="btn-icon delete" title="Delete" onclick="deleteMedia('${item.id}')"><i data-lucide="trash-2"></i></button>
         </div>
       </div>`;
@@ -1594,5 +1617,243 @@ socket.on('autodj-status', (data) => {
     const emoji = { music: '🎵', show: '🎙️', jingle: '✨', ad: '🗣️' }[meta.category] || '📻';
     if (autoDJTrackTitle) autoDJTrackTitle.textContent = emoji + ' ' + meta.title + ' (' + meta.index + '/' + (meta.total || '?') + ')';
     if (autoDJNowPlaying) autoDJNowPlaying.style.display = 'block';
+  }
+});
+
+// --- Playlists & Schedules Management ---
+
+async function loadPlaylists() {
+  if (!selectedChannelId) return;
+  try {
+    const res = await apiFetch(`/api/playlists/channel/${selectedChannelId}`);
+    allPlaylists = await res.json();
+    renderPlaylists();
+    updateSchedulePlaylistSelect();
+  } catch (err) {
+    console.error('Failed to load playlists:', err);
+  }
+}
+
+function renderPlaylists() {
+  if (!playlistsList) return;
+
+  if (allPlaylists.length === 0) {
+    playlistsList.innerHTML = '<div class="empty-state small">No playlists yet.</div>';
+    return;
+  }
+
+  playlistsList.innerHTML = allPlaylists.map(pl => `
+    <div class="mini-item ${selectedPlaylistId === pl.id ? 'active' : ''}" onclick="selectPlaylist('${pl.id}')">
+      <div class="info">
+        <h4>${pl.name}</h4>
+        <p>${pl.description || 'No description'}</p>
+      </div>
+      <button class="btn-small-icon" onclick="deletePlaylist(event, '${pl.id}')">
+        <i data-lucide="trash-2" style="width:14px"></i>
+      </button>
+    </div>
+  `).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateSchedulePlaylistSelect() {
+  if (!schedulePlaylistSelect) return;
+  schedulePlaylistSelect.innerHTML = allPlaylists.map(pl =>
+    `<option value="${pl.id}">${pl.name}</option>`
+  ).join('');
+}
+
+window.selectPlaylist = (id) => {
+  selectedPlaylistId = id;
+  renderPlaylists();
+  console.log('Playlist selected:', id);
+};
+
+window.deletePlaylist = async (e, id) => {
+  e.stopPropagation();
+  if (!confirm('Delete this playlist?')) return;
+  try {
+    const res = await apiFetch(`/api/playlists/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      allPlaylists = allPlaylists.filter(p => p.id !== id);
+      if (selectedPlaylistId === id) selectedPlaylistId = null;
+      renderPlaylists();
+      loadSchedules();
+    }
+  } catch (err) { console.error(err); }
+};
+
+window.addMediaToSelectedPlaylist = async (mediaId) => {
+  if (!selectedPlaylistId) {
+    alert('Please select a playlist from the sidebar first!');
+    return;
+  }
+
+  try {
+    // Get current items for this playlist
+    const res = await apiFetch(`/api/playlists/${selectedPlaylistId}`);
+    const playlist = await res.json();
+    const currentIds = (playlist.items || []).map(i => i.media_library.id);
+
+    if (currentIds.includes(mediaId)) {
+      alert('This track is already in the playlist.');
+      return;
+    }
+
+    currentIds.push(mediaId);
+
+    const updateRes = await apiFetch(`/api/playlists/${selectedPlaylistId}/items`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mediaIds: currentIds })
+    });
+
+    if (updateRes.ok) {
+      alert('Track added to playlist!');
+    }
+  } catch (err) { console.error(err); }
+};
+
+async function loadSchedules() {
+  if (!selectedChannelId) return;
+  try {
+    const res = await apiFetch(`/api/schedules/channel/${selectedChannelId}`);
+    allSchedules = await res.json();
+    renderSchedules();
+  } catch (err) {
+    console.error('Failed to load schedules:', err);
+  }
+}
+
+function renderSchedules() {
+  if (!scheduleTable) return;
+
+  if (allSchedules.length === 0) {
+    scheduleTable.innerHTML = '<div class="empty-state small">No scheduled programs yet. Set one up to structure your broadcast!</div>';
+    return;
+  }
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  scheduleTable.innerHTML = `
+    <div class="schedule-row schedule-header-row">
+      <div>Day</div>
+      <div>Playlist</div>
+      <div>Time Window</div>
+      <div>Action</div>
+    </div>
+    ${allSchedules.map(sch => {
+    const pl = allPlaylists.find(p => p.id === sch.playlist_id);
+    return `
+        <div class="schedule-row">
+          <div><span class="day-badge">${days[sch.day_of_week]}</span></div>
+          <div style="font-weight:500;">${pl ? pl.name : 'Unknown Playlist'}</div>
+          <div class="time-range">${sch.start_time.substring(0, 5)} — ${sch.end_time.substring(0, 5)}</div>
+          <div>
+            <button class="btn-small-icon" onclick="deleteSchedule('${sch.id}')" title="Remove slot">
+              <i data-lucide="trash-2" style="width:14px"></i>
+            </button>
+          </div>
+        </div>
+      `;
+  }).join('')}
+  `;
+  if (window.lucide) lucide.createIcons();
+}
+
+window.deleteSchedule = async (id) => {
+  if (!confirm('Remove this program slot?')) return;
+  try {
+    const res = await apiFetch(`/api/schedules/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      allSchedules = allSchedules.filter(s => s.id !== id);
+      renderSchedules();
+    }
+  } catch (err) { console.error(err); }
+};
+
+// Modal Toggle Handlers
+if (createPlaylistBtn) createPlaylistBtn.onclick = () => playlistModal.classList.remove('hidden');
+if (closePlaylistModal) closePlaylistModal.onclick = () => {
+  playlistModal.classList.add('hidden');
+  playlistForm.reset();
+};
+
+if (addScheduleBtn) addScheduleBtn.onclick = () => {
+  if (allPlaylists.length === 0) {
+    alert('Please create at least one playlist first.');
+    return;
+  }
+  scheduleModal.classList.remove('hidden');
+};
+if (closeScheduleModal) closeScheduleModal.onclick = () => {
+  scheduleModal.classList.add('hidden');
+  scheduleForm.reset();
+};
+
+// Form Handlers
+if (playlistForm) {
+  playlistForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('playlist-name').value.trim();
+    const description = document.getElementById('playlist-description').value.trim();
+
+    if (!name || !selectedChannelId) return;
+
+    try {
+      const res = await apiFetch('/api/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: selectedChannelId, name, description })
+      });
+      if (res.ok) {
+        playlistModal.classList.add('hidden');
+        playlistForm.reset();
+        loadPlaylists();
+      }
+    } catch (err) { console.error(err); }
+  };
+}
+
+if (scheduleForm) {
+  scheduleForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const playlistId = document.getElementById('schedule-playlist-select').value;
+    const dayOfWeek = parseInt(document.getElementById('schedule-day').value);
+    const startTime = document.getElementById('schedule-start').value;
+    const endTime = document.getElementById('schedule-end').value;
+
+    if (!playlistId || !startTime || !endTime) return;
+
+    try {
+      const res = await apiFetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: selectedChannelId,
+          playlistId,
+          dayOfWeek,
+          startTime: startTime + ':00',
+          endTime: endTime + ':00'
+        })
+      });
+      if (res.ok) {
+        scheduleModal.classList.add('hidden');
+        scheduleForm.reset();
+        loadSchedules();
+      } else {
+        const data = await res.json();
+        alert('Schedule conflict or error: ' + data.error);
+      }
+    } catch (err) { console.error(err); }
+  };
+}
+
+// Initial Sync
+channelSelect.addEventListener('change', () => {
+  if (selectedChannelId) {
+    loadPlaylists();
+    loadSchedules();
   }
 });

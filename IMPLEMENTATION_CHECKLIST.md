@@ -65,3 +65,8 @@ Which step would you like to tackle next based on the best practices?
 🔈 **[x] 1. Volume Normalization & Auto-Jingles** (Implemented via FFmpeg loudnorm and AutoDJ queue rotation)
 🎛️ **[x] 2. Build the Queue/Rotation UI** (Drag and Drop in Admin Dashboard)
 🎵 **[x] 3. Audio Crossfading** (Smooth transitions between tracks via Web Audio GainNodes)
+
+
+Playlist Scheduling: Set specific times for certain recordings or music categories to play.
+Broadcaster Jingle Pad: Add a set of buttons for the live host to play sound effects or intros with one click.
+Listener Call-In: A way for listeners to request "Mic access" to speak live on the station.

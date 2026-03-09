@@ -1229,3 +1229,134 @@ body {
 #media-file-input::file-selector-button:hover {
   opacity: 0.85;
 }
+
+/* Playlist & Schedule Layout */
+.split-view {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .split-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar-list,
+.main-content-view {
+  background: var(--card-nested);
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid var(--glass-border);
+}
+
+.mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.mini-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.mini-item:hover {
+  border-color: var(--secondary);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.mini-item .info h4 {
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.mini-item .info p {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.mini-item.active {
+  border-color: var(--secondary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.schedule-table-container {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 140px 80px;
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--glass-border);
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.schedule-header-row {
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--glass-border);
+}
+
+.day-badge {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.time-range {
+  font-family: monospace;
+  color: var(--success);
+}
+
+.btn-small-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-small-icon:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.section-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.mini-list .empty-state.small {
+  padding: 1rem;
+  font-size: 0.8rem;
+}
