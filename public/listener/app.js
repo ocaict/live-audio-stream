@@ -767,10 +767,14 @@ function appendMessage(msg) {
   div.innerHTML = `
     <div class="message-meta">
       ${isAdmin ? '<span class="admin-badge">Broadcaster</span>' : ''}
-      <span>${msg.username} • ${time}</span>
+      <span class="meta-text"></span>
     </div>
-    <div class="chat-bubble">${msg.content}</div>
+    <div class="chat-bubble"></div>
   `;
+
+  // Safely inject untrusted user data using textContent to prevent XSS
+  div.querySelector('.meta-text').textContent = `${msg.username} • ${time}`;
+  div.querySelector('.chat-bubble').textContent = msg.content;
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
