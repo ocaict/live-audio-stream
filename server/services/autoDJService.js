@@ -117,7 +117,8 @@ class AutoDJService extends EventEmitter {
             ffmpegProcess: null,
             emitChunk,
             emitMeta,
-            activeScheduleId
+            activeScheduleId,
+            consecutiveErrors: 0 // Issue #8 Tracker
         };
 
         this.sessions.set(channelId, session);
@@ -190,10 +191,16 @@ class AutoDJService extends EventEmitter {
         if (!session || !session.isRunning) return;
 
         let buffer = Buffer.alloc(0);
-        let chunkTimer = null;
         let ended = false;
 
+        // Use a Node.js PassThrough stream instead of concatenating to memory
+        const { PassThrough } = require('stream');
+        const passThrough = new PassThrough();
+
+        // "-re" reads the input at its native frame rate. This ensures FFmpeg 
+        // doesn't convert the entire file instantly and dump it into our stream.
         const proc = ffmpeg(track.cloud_url)
+            .inputOptions(['-re'])
             .noVideo()
             .audioChannels(CHANNELS)
             .audioFrequency(SAMPLE_RATE)
@@ -202,14 +209,25 @@ class AutoDJService extends EventEmitter {
             // Volume Normalization: Broadcast standard -16 LUFS
             .audioFilter('loudnorm=I=-16:TP=-1.5:LRA=11')
             .on('start', (cmd) => {
-                console.log(`[AutoDJ] FFmpeg started: ${cmd.substring(0, 80)}...`);
+                console.log(`[AutoDJ] FFmpeg started (${track.title})`);
+                session.consecutiveErrors = 0; // Reset error counter on successful start
             })
             .on('error', (err) => {
-                if (!session.isRunning) return; // Expected on stop
+                if (!session.isRunning) return; // Expected on manual stop
+
                 console.error(`[AutoDJ] FFmpeg error for "${track.title}":`, err.message);
-                clearInterval(chunkTimer);
+                session.consecutiveErrors++;
+
+                if (session.consecutiveErrors >= 3) {
+                    console.error(`[AutoDJ] Aborting Auto-DJ on ${channelId} due to consecutive failures. (Circuit Breaker)`);
+                    this.stop(channelId);
+                    // Broadcast error state out if possible
+                    this.emit('circuit-breaker', { channelId });
+                    return;
+                }
+
                 // Try next track after short delay
-                setTimeout(() => this._playNext(channelId), 500);
+                setTimeout(() => this._playNext(channelId), 1000);
             })
             .on('end', () => {
                 ended = true;
@@ -217,39 +235,33 @@ class AutoDJService extends EventEmitter {
             });
 
         session.ffmpegProcess = proc;
+        proc.pipe(passThrough);
 
-        const stream = proc.pipe();
+        // Read chunks from the PassThrough stream 
+        // This solves Issue #7 (RAM starvation) by only keeping chunk-sized buffers in JS memory
+        passThrough.on('data', (data) => {
+            if (!session.isRunning) return;
 
-        stream.on('data', (data) => {
             buffer = Buffer.concat([buffer, data]);
-        });
 
-        stream.on('end', () => {
-            ended = true;
-        });
-
-        // Drip-feed chunks at a consistent rate to simulate real-time streaming
-        chunkTimer = setInterval(() => {
-            if (!session.isRunning) {
-                clearInterval(chunkTimer);
-                return;
-            }
-
-            if (buffer.length >= CHUNK_BYTES) {
+            // Extract and emit exactly CHUNK_BYTES segments
+            while (buffer.length >= CHUNK_BYTES) {
                 const chunk = buffer.slice(0, CHUNK_BYTES);
                 buffer = buffer.slice(CHUNK_BYTES);
                 session.emitChunk({ chunk, trackId: track.id });
-            } else if (ended && buffer.length > 0) {
-                // Drain remaining bytes
-                session.emitChunk({ chunk: buffer, trackId: track.id });
-                buffer = Buffer.alloc(0);
-            } else if (ended && buffer.length === 0) {
-                // Track finished, move to next
-                clearInterval(chunkTimer);
-                // Reduce the gap so crossfading begins immediately
-                setTimeout(() => this._playNext(channelId), 50);
             }
-        }, CHUNK_SIZE_MS);
+        });
+
+        passThrough.on('end', () => {
+            if (!session.isRunning) return;
+
+            // Drain any remaining bytes at the end of the track
+            if (buffer.length > 0) {
+                session.emitChunk({ chunk: buffer, trackId: track.id });
+            }
+            // Move to next
+            setTimeout(() => this._playNext(channelId), 50);
+        });
     }
 
     stop(channelId) {
