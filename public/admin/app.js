@@ -1105,7 +1105,14 @@ function renderRecordings(recordings) {
     if (confirm('Permanently delete this recording?')) {
       try {
         const res = await apiFetch(`/api/recordings/${b.dataset.id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Delete failed');
+        if (!res.ok) {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            throw new Error(data.error || 'Delete failed');
+          }
+          throw new Error(`Delete failed (Status: ${res.status})`);
+        }
         loadRecordings();
       } catch (e) { alert(e.message); }
     }
@@ -1479,8 +1486,13 @@ async function deleteMedia(id) {
       allMedia = allMedia.filter(m => m.id !== id);
       renderMedia(allMedia);
     } else {
-      const d = await res.json();
-      alert(d.error || 'Delete failed');
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const d = await res.json();
+        alert(d.error || 'Delete failed');
+      } else {
+        alert(`Delete failed (Status: ${res.status})`);
+      }
     }
   } catch (e) {
     console.error('Delete media error:', e);

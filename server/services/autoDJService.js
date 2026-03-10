@@ -33,6 +33,25 @@ class AutoDJService extends EventEmitter {
         super();
         // Map of channelId => { ffmpegProcess, queue, currentIndex, isRunning, isPaused, activeScheduleId }
         this.sessions = new Map();
+        // Map of channelId => { isEnabled: boolean }
+        this.channelConfigs = new Map();
+    }
+
+    /**
+     * Check if Auto-DJ is allowed to run (the "Master Toggle")
+     */
+    isAutoDJEnabled(channelId) {
+        const config = this.channelConfigs.get(channelId);
+        // Default to TRUE so handover works normally until explicitly stopped
+        return config ? config.isEnabled : true;
+    }
+
+    /**
+     * Set the intent toggle for Auto-DJ
+     */
+    setAutoDJEnabled(channelId, isEnabled) {
+        console.log(`[AutoDJ] Setting Master Toggle for ${channelId} to: ${isEnabled}`);
+        this.channelConfigs.set(channelId, { isEnabled });
     }
 
     /**

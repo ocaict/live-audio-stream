@@ -692,6 +692,22 @@ socket.on('no-broadcast', () => {
   }
 });
 
+socket.on('station-offline-info', (data) => {
+  if (String(data.channelId) !== String(State.channelId)) return;
+
+  if (data.nextShow) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const now = new Date();
+    const isToday = data.nextShow.dayOfWeek === now.getUTCDay();
+    const dayName = isToday ? 'Today' : days[data.nextShow.dayOfWeek];
+    const timeStr = data.nextShow.startTime.substring(0, 5);
+
+    updateStatus(`Next show ${dayName} at ${timeStr}: ${data.nextShow.title}`, 'connecting');
+  } else {
+    updateStatus('Station is currently on standby', 'connecting');
+  }
+});
+
 /* Interactive Chat Logic */
 socket.on('chat-history', (data) => {
   if (String(data.channelId) !== String(State.channelId)) return;

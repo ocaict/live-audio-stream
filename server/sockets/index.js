@@ -6,6 +6,7 @@ const webrtcService = require('../services/webrtcService');
 const recordingService = require('../services/recordingService');
 const MessageModel = require('../models/message');
 const autoDJService = require('../services/autoDJService');
+const ScheduleModel = require('../models/schedule');
 
 function setupSocketHandlers(io) {
   // Authentication middleware
@@ -53,7 +54,9 @@ function setupSocketHandlers(io) {
               }
             }
             // Auto-DJ kicks in when broadcaster does not return
-            startAutoDJ(currentChannelId, io);
+            if (autoDJService.isAutoDJEnabled(currentChannelId)) {
+              startAutoDJ(currentChannelId, io);
+            }
           });
         } else {
           webrtcService.removeListener(socket.id, currentChannelId);
@@ -79,7 +82,7 @@ function setupSocketHandlers(io) {
         socket.emit('chat-history', { channelId, messages: history });
       }).catch(e => console.error('Error sending chat history:', e.message));
 
-      // Auto-DJ: On by default for listeners joining an inactive station
+      // Auto-DJ: Handover logic and Offline info
       if (role === 'listener') {
         if (autoDJService.isRunning(channelId)) {
           const meta = autoDJService.getSessionMetadata(channelId);
@@ -88,8 +91,22 @@ function setupSocketHandlers(io) {
             socket.emit('autodj-track-changed', meta);
           }
         } else if (!webrtcService.isChannelLive(channelId)) {
-          // If station is dead air, bring it to life
-          startAutoDJ(channelId, io);
+          // Check if Auto-DJ is allowed to start
+          if (autoDJService.isAutoDJEnabled(channelId)) {
+            startAutoDJ(channelId, io);
+          } else {
+            // Station is intentionally offline, fetch the next show
+            ScheduleModel.findNextUpcomingSchedule(channelId).then(nextShow => {
+              socket.emit('station-offline-info', {
+                channelId,
+                nextShow: nextShow ? {
+                  title: nextShow.playlists?.name || 'Scheduled Broadcast',
+                  startTime: nextShow.start_time,
+                  dayOfWeek: nextShow.day_of_week
+                } : null
+              });
+            });
+          }
         }
       }
     });
@@ -320,6 +337,7 @@ function setupSocketHandlers(io) {
         socket.emit('error', 'Cannot start Auto-DJ: channel is currently live');
         return;
       }
+      autoDJService.setAutoDJEnabled(channelId, true);
       startAutoDJ(channelId, io);
       // Emit directly to admin socket so badge updates even if not in channel room
       socket.emit('autodj-started', { channelId });
@@ -330,6 +348,7 @@ function setupSocketHandlers(io) {
       if (!socket.user) { socket.emit('error', 'Auth required'); return; }
       const channelId = data?.channelId;
       if (!channelId) { socket.emit('error', 'channelId required'); return; }
+      autoDJService.setAutoDJEnabled(channelId, false);
       autoDJService.stop(channelId);
       io.to(channelId).emit('autodj-stopped', { channelId, reason: 'admin_stopped' });
       // Also emit directly to admin socket
@@ -459,7 +478,7 @@ function setupSocketHandlers(io) {
       try {
         const channels = await ChannelModel.findAll();
         for (const ch of channels) {
-          if (!webrtcService.isChannelLive(ch.id) && !autoDJService.isRunning(ch.id)) {
+          if (!webrtcService.isChannelLive(ch.id) && !autoDJService.isRunning(ch.id) && autoDJService.isAutoDJEnabled(ch.id)) {
             startAutoDJ(ch.id, io);
           }
         }

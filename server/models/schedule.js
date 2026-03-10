@@ -107,6 +107,48 @@ const ScheduleModel = {
             return null;
         }
         return data;
+    },
+
+    /**
+     * Finds the next scheduled show for a channel when it's currently offline.
+     */
+    async findNextUpcomingSchedule(channelId) {
+        const now = new Date();
+        const currentDay = now.getUTCDay();
+        const currentTime = now.getUTCHours().toString().padStart(2, '0') + ':' +
+            now.getUTCMinutes().toString().padStart(2, '0') + ':00';
+
+        // 1. Check for later today
+        const { data: todayLater, error: error1 } = await getSupabase()
+            .from('schedules')
+            .select('*, playlists(name)')
+            .eq('channel_id', channelId)
+            .eq('day_of_week', currentDay)
+            .eq('is_enabled', true)
+            .gt('start_time', currentTime)
+            .order('start_time', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (todayLater) return todayLater;
+
+        // 2. Check for upcoming days
+        for (let i = 1; i <= 7; i++) {
+            const nextDay = (currentDay + i) % 7;
+            const { data: nextDays, error: error2 } = await getSupabase()
+                .from('schedules')
+                .select('*, playlists(name)')
+                .eq('channel_id', channelId)
+                .eq('day_of_week', nextDay)
+                .eq('is_enabled', true)
+                .order('start_time', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+            if (nextDays) return nextDays;
+        }
+
+        return null;
     }
 };
 
