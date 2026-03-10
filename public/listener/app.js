@@ -746,13 +746,20 @@ socket.on('chat-cleared', (data) => {
 function appendMessage(msg) {
   const currentUsername = chatUsernameInput.value.trim() || 'Anonymous';
   const isOwn = msg.username === currentUsername;
+  const isAdmin = msg.is_admin === true;
+  const isSystem = msg.is_system === true;
 
   const div = document.createElement('div');
-  div.className = `message-item ${isOwn ? 'own' : ''}`;
+  div.className = `message-item ${isOwn ? 'own' : ''} ${isAdmin ? 'is-admin' : ''} ${isSystem ? 'is-system' : ''}`;
   div.dataset.id = msg.id;
 
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   div.innerHTML = `
-    <div class="message-meta">${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="message-meta">
+      ${isAdmin ? '<span class="admin-badge">Broadcaster</span>' : ''}
+      <span>${msg.username} • ${time}</span>
+    </div>
     <div class="chat-bubble">${msg.content}</div>
   `;
 
@@ -760,8 +767,11 @@ function appendMessage(msg) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+let chatCooldown = false;
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  if (chatCooldown) return;
+
   const content = chatInput.value.trim();
   const username = chatUsernameInput.value.trim() || 'Anonymous';
 
@@ -777,6 +787,22 @@ chatForm.addEventListener('submit', (e) => {
   });
 
   chatInput.value = '';
+
+  // Trigger cooldown
+  chatCooldown = true;
+  const submitBtn = chatForm.querySelector('.send-btn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('cooldown');
+  }
+
+  setTimeout(() => {
+    chatCooldown = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('cooldown');
+    }
+  }, 2000);
 });
 
 /* Visualizer Logic */

@@ -983,17 +983,20 @@ socket.on('chat-cleared', (data) => {
 
 function appendMessage(msg) {
   const currentUsername = document.getElementById('header-username')?.textContent || 'Broadcaster';
-  const isOwn = msg.username === currentUsername || msg.username === 'Broadcaster' || msg.username === 'admin';
+  const isOwn = msg.username === currentUsername || msg.username === 'Broadcaster' || msg.username === 'admin' || msg.is_admin;
+  const isSystem = msg.is_system === true;
 
   const div = document.createElement('div');
-  div.className = `message-item ${isOwn ? 'own' : ''}`;
+  div.className = `message-item ${isOwn ? 'own' : ''} ${isSystem ? 'is-system' : ''}`;
   div.dataset.id = msg.id;
+
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   div.innerHTML = `
     <div class="message-meta">
-      <span>${msg.username} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <span>${msg.username} • ${time}</span>
       <button class="delete-msg-btn" onclick="deleteMessage('${msg.id}')" title="Delete Message">
-        <i data-lucide="trash-2"></i>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
       </button>
     </div>
     <div class="chat-bubble">${msg.content}</div>
@@ -1001,7 +1004,6 @@ function appendMessage(msg) {
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
-  if (window.lucide) lucide.createIcons();
 }
 
 window.deleteMessage = (messageId) => {
@@ -1019,8 +1021,11 @@ if (clearChatBtn) {
   });
 }
 
+let chatCooldown = false;
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  if (chatCooldown) return;
+
   const content = chatInput.value.trim();
   if (!content || !selectedChannelId) return;
 
@@ -1033,6 +1038,16 @@ chatForm.addEventListener('submit', (e) => {
   });
 
   chatInput.value = '';
+
+  // Cooldown
+  chatCooldown = true;
+  const submitBtn = document.getElementById('send-chat-btn');
+  if (submitBtn) submitBtn.disabled = true;
+
+  setTimeout(() => {
+    chatCooldown = false;
+    if (submitBtn) submitBtn.disabled = false;
+  }, 2000);
 });
 
 async function loadRecordings() {

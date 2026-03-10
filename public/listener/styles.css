@@ -595,6 +595,54 @@ footer {
   box-shadow: 0 4px 15px var(--primary-glow);
 }
 
+/* System Message (Centered, Gray) */
+.message-item.is-system {
+  align-self: center;
+  max-width: 100%;
+  margin: 0.5rem 0;
+}
+
+.message-item.is-system .chat-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed var(--glass-border);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-style: italic;
+  font-weight: 500;
+  border-radius: 20px;
+  padding: 4px 16px;
+  text-align: center;
+}
+
+.message-item.is-system .message-meta {
+  display: none;
+}
+
+/* Admin/Broadcaster Highlight */
+.message-item.is-admin .chat-bubble {
+  background: linear-gradient(145deg, rgba(255, 45, 85, 0.2), rgba(255, 45, 85, 0.05));
+  border: 1px solid rgba(255, 45, 85, 0.4);
+  color: #fff;
+}
+
+.message-item.is-admin .message-meta {
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.5rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
 .chat-input-area {
   margin-top: 1.5rem;
   display: flex;
@@ -650,6 +698,17 @@ footer {
 
 .send-btn:hover {
   transform: scale(1.05);
+}
+
+.send-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: scale(1) !important;
+}
+
+.send-btn.cooldown {
+  background: #334155;
+  filter: grayscale(1);
 }
 
 @keyframes messageSlide {
@@ -973,6 +1032,7 @@ footer {
   padding: 40px;
   color: var(--text-dim);
 }
+
 /* Now Playing Card Overlay */
 .now-playing-card {
   position: fixed;
@@ -1037,8 +1097,15 @@ footer {
 }
 
 @keyframes slide-up-reveal {
-  from { transform: translateY(100px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Up Next Section and Enhancements */

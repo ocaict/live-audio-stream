@@ -171,6 +171,15 @@ function setupSocketHandlers(io) {
 
       webrtcService.startBroadcast(socket, channelId);
       console.log(`Broadcaster established on channel ${channelId}`);
+
+      // Notify chat: Broadcaster joined
+      const systemMsg = await MessageModel.create({
+        channel_id: channelId,
+        username: 'System',
+        content: `🎙️ Broadcaster is now LIVE! Welcome to the show.`,
+        is_system: true
+      });
+      io.to(channelId).emit('new-message', systemMsg);
     });
 
     socket.on('stop-broadcasting', async (data) => {
@@ -188,8 +197,23 @@ function setupSocketHandlers(io) {
       webrtcService.stopBroadcast(channelId);
       console.log(`Broadcast stopped manually on channel ${channelId}`);
 
-      // Auto-DJ takes over immediately after manual stop
-      startAutoDJ(channelId, io);
+      // Auto-DJ takes over immediately after manual stop iff enabled
+      if (autoDJService.isAutoDJEnabled(channelId)) {
+        startAutoDJ(channelId, io);
+      }
+
+      // Notify chat: Broadcaster left
+      try {
+        const systemMsg = await MessageModel.create({
+          channel_id: channelId,
+          username: 'System',
+          content: `📻 Live broadcast has ended. Tuning into Auto-DJ...`,
+          is_system: true
+        });
+        io.to(channelId).emit('new-message', systemMsg);
+      } catch (e) {
+        console.error('Failed to send end-broadcast system message');
+      }
     });
 
     socket.on('offer', (data) => {
@@ -295,7 +319,8 @@ function setupSocketHandlers(io) {
         const message = await MessageModel.create({
           channel_id: targetChannelId,
           username,
-          content
+          content,
+          is_admin: !!socket.user // Verified admin if socket has user attached
         });
 
         // Broadcast to everyone in the room

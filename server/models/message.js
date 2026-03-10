@@ -7,7 +7,9 @@ const MessageModel = {
             .insert([{
                 channel_id: message.channel_id,
                 username: message.username,
-                content: message.content
+                content: message.content,
+                is_admin: message.is_admin || false,
+                is_system: message.is_system || false
             }])
             .select()
             .single();
