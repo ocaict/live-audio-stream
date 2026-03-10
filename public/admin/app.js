@@ -433,6 +433,55 @@ registerForm.addEventListener('submit', (e) => {
   register(document.getElementById('reg-username').value, document.getElementById('reg-password').value);
 });
 
+// Login / Register Form Toggle
+if (showRegisterBtn) {
+  showRegisterBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+  });
+}
+if (showLoginBtn) {
+  showLoginBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+  });
+}
+
+// --- TAB SWITCHING LOGIC ---
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const tabId = btn.getAttribute('data-tab');
+
+    // Update button states
+    tabButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update panel visibility
+    tabPanels.forEach(p => p.classList.remove('active'));
+    const activePanel = document.getElementById(`${tabId}-tab`);
+    if (activePanel) activePanel.classList.add('active');
+
+    // Trigger tab-specific refreshes
+    if (tabId === 'library') {
+      await loadMedia();
+      await loadRecordings();
+    } else if (tabId === 'scheduling') {
+      await loadPlaylists(); // Order matters here for renderSchedules
+      await loadSchedules();
+    } else if (tabId === 'analytics') {
+      // Any specific analytics refresh
+    }
+
+    // Re-trigger Lucide icons for any new content
+    if (window.lucide) lucide.createIcons();
+  });
+});
+
 showRegisterBtn.addEventListener('click', (e) => {
   e.preventDefault();
   loginForm.classList.add('hidden');
@@ -2303,6 +2352,15 @@ socket.on('call-ice', async (data) => {
     await activeCall.pc.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
 });
+
+// --- LOGOUT ---
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    if (confirm('Log out from OcaTech-Live?')) {
+      logout();
+    }
+  });
+}
 
 // --- VISUAL RADIO CLOCK LOGIC ---
 

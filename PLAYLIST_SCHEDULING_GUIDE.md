@@ -41,10 +41,9 @@ CREATE INDEX idx_schedules_active ON schedules (channel_id, day_of_week, is_enab
 ### 2. Implementation Checklist
 - [x] Create `PlaylistModel` for grouping media.
 - [x] Create `ScheduleModel` for time-slot management.
-- [ ] Update `AutoDJService` to check for active schedules.
-- [ ] Create API Routes for Admin UI to manage Playlists.
-- [ ] Create API Routes for Admin UI to manage Schedules.
-- [ ] Update Admin Dashboard UI with a "Schedules" tab.
+- [x] Update `AutoDJService` to check for active schedules.
+- [x] Create API Routes for Admin UI to manage Playlists.
+- [x] Create API Routes for Admin UI to manage Schedules.
+- [x] Update Admin Dashboard UI with a "Schedules" tab.
 
 ---
-**Status:** I have already created the `PlaylistModel` and `ScheduleModel`. I am now ready to update the `AutoDJService` once you've confirmed the tables are set up (or I can proceed with the code changes if you'd like me to finish the logic first).

@@ -254,170 +254,100 @@
 
       <!-- Center: Controls -->
       <div class="main-content">
-        <div class="control-grid">
-          <!-- Studio Master Clock -->
-          <section class="studio-clock-card glass-card">
-            <div class="clock-main">
-              <div class="clock-time" id="studio-time">00:00:00</div>
-              <div class="clock-date" id="studio-date">MONDAY, MAR 09</div>
-            </div>
-            <div class="clock-status">
-              <div id="on-air-timer" class="on-air-timer inactive">
-                <span class="timer-label">ON AIR DURATION</span>
-                <span class="timer-value" id="broadcast-duration">00:00:00</span>
-              </div>
-              <div class="clock-indicator" id="clock-on-air-indicator">OFF AIR</div>
-            </div>
-          </section>
-
-          <!-- Broadcast Control -->
-          <section class="section-card glass-card">
-            <div class="section-header">
-              <h2><i data-lucide="mic"></i> Broadcast</h2>
-            </div>
-            <div class="status-banner" id="broadcast-status">Select a station to go live</div>
-            <div class="control-actions">
-              <button id="start-broadcast-btn" class="btn primary large-btn">
-                <i data-lucide="play"></i>
-                <span>Go Live</span>
-              </button>
-              <button id="stop-broadcast-btn" class="btn danger large-btn" disabled>
-                <i data-lucide="square"></i>
-                <span>End Stream</span>
-              </button>
-              <button id="mute-mic-btn" class="btn icon-btn mute-btn" title="Mute Microphone" disabled>
-                <i data-lucide="mic" id="mute-icon"></i>
-              </button>
-            </div>
-          </section>
-
-          <!-- Audio Monitor -->
-          <section class="section-card glass-card monitor-section">
-            <div class="section-header">
-              <h2><i data-lucide="activity"></i> Audio Monitor</h2>
-            </div>
-            <div class="meter-wrapper">
-              <div class="meter-labels">
-                <span>0</span>
-                <span>-12</span>
-                <span>-24</span>
-                <span>-36</span>
-                <span>-48</span>
-              </div>
-              <canvas id="audio-meter-canvas"></canvas>
-            </div>
-          </section>
-
-          <!-- Recording Control -->
-          <section class="section-card glass-card">
-            <div class="section-header">
-              <h2><i data-lucide="disc"></i> Recording</h2>
-            </div>
-            <div class="status-banner" id="recording-status">Waiting for broadcast...</div>
-            <div class="control-actions">
-              <button id="start-recording-btn" class="btn secondary large-btn" disabled>
-                <i data-lucide="circle"></i>
-                <span>Record</span>
-              </button>
-              <button id="stop-recording-btn" class="btn danger large-btn" disabled>
-                <i data-lucide="square"></i>
-                <span>Stop</span>
-              </button>
-            </div>
-            <p id="recording-id" class="recording-id"></p>
-          </section>
+        <!-- New: Tab Navigation -->
+        <div class="tabs-nav-bar">
+          <button class="tab-btn active" data-tab="studio">
+            <i data-lucide="radio"></i><span>Studio</span>
+          </button>
+          <button class="tab-btn" data-tab="library">
+            <i data-lucide="library"></i><span>Library</span>
+          </button>
+          <button class="tab-btn" data-tab="scheduling">
+            <i data-lucide="calendar"></i><span>Schedules</span>
+          </button>
+          <button class="tab-btn" data-tab="analytics">
+            <i data-lucide="bar-chart-3"></i><span>Analytics</span>
+          </button>
         </div>
 
-        <!-- Real-time Stats -->
-        </section>
-
-        <!-- Live Chat Section -->
-        <section id="chat-drawer" class="section-card glass-card chat-section">
-          <div class="section-header">
-            <h2><i data-lucide="messages-square"></i> Community Chat</h2>
-            <div class="header-actions">
-              <button id="close-chat-btn" class="close-chat-btn" title="Close Chat"><i data-lucide="x"></i></button>
-              <button id="clear-chat-btn" class="btn-small danger-small" title="Clear all messages">
-                <i data-lucide="trash-2"></i>
-                <span>Clear</span>
-              </button>
-            </div>
-          </div>
-          <div class="chat-container">
-            <div id="chat-messages" class="chat-messages">
-              <div class="chat-placeholder">No messages yet. Start the conversation!</div>
-            </div>
-          </div>
-          <form id="chat-form" class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
-            <button type="submit" class="btn primary-small" id="send-chat-btn">
-              <i data-lucide="send"></i>
-            </button>
-          </form>
-        </section>
-
-        <!-- Listener Call-In Queue -->
-        <section id="call-in-section" class="section-card glass-card hidden">
-          <div class="section-header">
-            <h2><i data-lucide="phone-incoming"></i> Listener Call Queue</h2>
-            <div id="active-call-badge" class="status-msg small hidden"
-              style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">
-              ● LIVE CALL
-            </div>
-          </div>
-          <div id="call-queue-list" class="call-queue-list">
-            <div class="empty-state small">No pending callers.</div>
-          </div>
-          <p class="section-hint" style="margin-top: 1rem;">Accept a call to bring a listener on-air. Headphones are
-            highly recommended to prevent echo.</p>
-        </section>
-
-        <!-- Live Analytics Grid -->
-        <div class="analytics-grid">
-          <!-- Station Ranking -->
-          <section class="section-card glass-card ranking-section">
-            <div class="section-header">
-              <h2><i data-lucide="bar-chart-3"></i> Station Popularity</h2>
-              <div class="small status-msg">Refreshed every 10s</div>
-            </div>
-            <div id="station-ranking-list" class="ranking-list">
-              <div class="chat-placeholder">Gathering data...</div>
-            </div>
-          </section>
-
-          <!-- Audience Trend -->
-          <section class="section-card glass-card stats-area">
-            <div class="section-header">
-              <h2><i data-lucide="trending-up"></i> Audience Activity</h2>
-              <div id="stats-summary" class="stats-badges">
-                <span class="stat-item">Peak: <b id="peak-listeners">0</b></span>
+        <!-- TAB: Studio -->
+        <div id="studio-tab" class="tab-panel active">
+          <div class="control-grid">
+            <!-- Studio Master Clock -->
+            <section class="studio-clock-card glass-card">
+              <div class="clock-main">
+                <div class="clock-time" id="studio-time">00:00:00</div>
+                <div class="clock-date" id="studio-date">MONDAY, MAR 09</div>
               </div>
-            </div>
-            <div class="chart-container">
-              <canvas id="listener-trend-chart"></canvas>
-            </div>
+              <div class="clock-status">
+                <div id="on-air-timer" class="on-air-timer inactive">
+                  <span class="timer-label">ON AIR DURATION</span>
+                  <span class="timer-value" id="broadcast-duration">00:00:00</span>
+                </div>
+                <div class="clock-indicator" id="clock-on-air-indicator">OFF AIR</div>
+              </div>
+            </section>
+
+            <!-- Broadcast Control -->
+            <section class="section-card glass-card">
+              <div class="section-header">
+                <h2><i data-lucide="mic"></i> Broadcast</h2>
+              </div>
+              <div class="status-banner" id="broadcast-status">Select a station to go live</div>
+              <div class="control-actions">
+                <button id="start-broadcast-btn" class="btn primary large-btn">
+                  <i data-lucide="play"></i>
+                  <span>Go Live</span>
+                </button>
+                <button id="stop-broadcast-btn" class="btn danger large-btn" disabled>
+                  <i data-lucide="square"></i>
+                  <span>End Stream</span>
+                </button>
+                <button id="mute-mic-btn" class="btn icon-btn mute-btn" title="Mute Microphone" disabled>
+                  <i data-lucide="mic" id="mute-icon"></i>
+                </button>
+              </div>
+            </section>
+
+            <!-- Audio Monitor -->
+            <section class="section-card glass-card monitor-section">
+              <div class="section-header">
+                <h2><i data-lucide="activity"></i> Audio Monitor</h2>
+              </div>
+              <div class="meter-wrapper">
+                <div class="meter-labels">
+                  <span>0</span>
+                  <span>-12</span>
+                  <span>-24</span>
+                  <span>-36</span>
+                  <span>-48</span>
+                </div>
+                <canvas id="audio-meter-canvas"></canvas>
+              </div>
+            </section>
+
+            <!-- Recording Control -->
+            <section class="section-card glass-card">
+              <div class="section-header">
+                <h2><i data-lucide="disc"></i> Recording</h2>
+              </div>
+              <div class="status-banner" id="recording-status">Waiting for broadcast...</div>
+              <div class="control-actions">
+                <button id="start-recording-btn" class="btn secondary large-btn" disabled>
+                  <i data-lucide="circle"></i>
+                  <span>Record</span>
+                </button>
+                <button id="stop-recording-btn" class="btn danger large-btn" disabled>
+                  <i data-lucide="square"></i>
+                  <span>Stop</span>
+                </button>
+              </div>
+              <p id="recording-id" class="recording-id"></p>
+            </section>
+          </div>
+
           </section>
         </div>
-        <section class="section-card glass-card recordings-container">
-          <div class="section-header">
-            <h2><i data-lucide="history"></i> Recent Recordings</h2>
-            <div class="header-actions">
-              <div class="search-box">
-                <i data-lucide="search"></i>
-                <input type="text" id="recordings-search" placeholder="Search recordings...">
-              </div>
-              <button id="refresh-recordings-btn" class="btn-small icon-btn-ghost">
-                <i data-lucide="refresh-cw"></i>
-              </button>
-            </div>
-          </div>
-          <div id="recordings-list" class="recordings-list">
-            <div class="empty-state">
-              <i data-lucide="music"></i>
-              <p>No recordings found yet.</p>
-            </div>
-          </div>
-        </section>
 
         <!-- Auto-DJ Control Panel -->
         <section class="section-card glass-card">
@@ -457,8 +387,6 @@
               style="flex: 1; height: 4px;">
             <span style="font-size: 0.7rem; color: var(--text-dim);">Monitor Volume</span>
           </div>
-          <p class="rec-meta" style="margin-top:0.75rem; font-size:0.78rem;">Auto-DJ streams from your Media Library
-            when you are offline. It stops the moment you go live.</p>
         </section>
 
         <!-- Broadcaster Jingle Pad (Live FX) -->
@@ -482,10 +410,25 @@
             <!-- Populated via JS -->
             <div class="empty-state small">No jingles found in library.</div>
           </div>
-          <p class="section-hint">Click a jingle to play it instantly on your live stream. These only work while you are
-            broadcasting.</p>
         </section>
 
+        <!-- Listener Call-In Queue -->
+        <section id="call-in-section" class="section-card glass-card hidden">
+          <div class="section-header">
+            <h2><i data-lucide="phone-incoming"></i> Listener Call Queue</h2>
+            <div id="active-call-badge" class="status-msg small hidden"
+              style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">
+              ● LIVE CALL
+            </div>
+          </div>
+          <div id="call-queue-list" class="call-queue-list">
+            <div class="empty-state small">No pending callers.</div>
+          </div>
+        </section>
+      </div><!-- END Studio Tab -->
+
+      <!-- TAB: Library -->
+      <div id="library-tab" class="tab-panel">
         <!-- Media Library (Auto-DJ) -->
         <section class="section-card glass-card recordings-container">
           <div class="section-header">
@@ -512,7 +455,31 @@
           </div>
         </section>
 
-        <!-- Playlists & Schedule -->
+        <!-- Recent Recordings -->
+        <section class="section-card glass-card recordings-container">
+          <div class="section-header">
+            <h2><i data-lucide="history"></i> Recent Recordings</h2>
+            <div class="header-actions">
+              <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="recordings-search" placeholder="Search recordings...">
+              </div>
+              <button id="refresh-recordings-btn" class="btn-small icon-btn-ghost">
+                <i data-lucide="refresh-cw"></i>
+              </button>
+            </div>
+          </div>
+          <div id="recordings-list" class="recordings-list">
+            <div class="empty-state">
+              <i data-lucide="music"></i>
+              <p>No recordings found yet.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB: Scheduling -->
+      <div id="scheduling-tab" class="tab-panel">
         <section class="section-card glass-card">
           <div class="section-header">
             <h2><i data-lucide="calendar"></i> Playlists & Schedule</h2>
@@ -529,6 +496,7 @@
           <div class="split-view">
             <div class="sidebar-list">
               <h3><i data-lucide="list"></i> Playlists</h3>
+              <p class="section-hint">Select a playlist to edit its items or drag media into it.</p>
               <div id="playlists-list" class="mini-list">
                 <div class="empty-state small">No playlists yet.</div>
               </div>
@@ -536,6 +504,7 @@
 
             <div class="main-content-view">
               <h3><i data-lucide="calendar-check"></i> Weekly Program</h3>
+              <p class="section-hint">Scheduled Auto-DJ programs for this station.</p>
               <div id="schedule-table" class="schedule-table-container">
                 <div class="empty-state small">No scheduled programs yet.</div>
               </div>
@@ -543,80 +512,110 @@
           </div>
         </section>
       </div>
-    </main>
 
+      <!-- TAB: Analytics -->
+      <div id="analytics-tab" class="tab-panel">
+        <div class="analytics-grid">
+          <!-- Station Ranking -->
+          <section class="section-card glass-card ranking-section">
+            <div class="section-header">
+              <h2><i data-lucide="bar-chart-3"></i> Station Popularity</h2>
+              <div class="small status-msg">Refreshed every 10s</div>
+            </div>
+            <div id="station-ranking-list" class="ranking-list">
+              <div class="chat-placeholder">Gathering data...</div>
+            </div>
+          </section>
 
-    <!-- Upload Media Modal -->
-    <div id="upload-media-modal" class="modal hidden">
-      <div class="modal-content glass-card">
-        <div class="modal-header">
-          <h2><i data-lucide="upload-cloud"></i> Upload Custom Audio</h2>
-          <button id="close-upload-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
-        </div>
-        <div class="modal-body">
-          <form id="upload-media-form">
-            <div class="field">
-              <label>Audio File (.mp3, .wav)</label>
-              <input type="file" id="media-file-input" accept="audio/*" required>
+          <!-- Audience Trend -->
+          <section class="section-card glass-card stats-area">
+            <div class="section-header">
+              <h2><i data-lucide="trending-up"></i> Audience Activity</h2>
+              <div id="stats-summary" class="stats-badges">
+                <span class="stat-item">Peak: <b id="peak-listeners">0</b></span>
+              </div>
             </div>
-            <div class="field">
-              <label>Title</label>
-              <input type="text" id="media-title" placeholder="Professional Name" required>
+            <div class="chart-container">
+              <canvas id="listener-trend-chart"></canvas>
             </div>
-            <div class="field">
-              <label>Category</label>
-              <select id="media-category" required class="custom-select-small">
-                <option value="music">🎵 Music Track</option>
-                <option value="show">🎙️ Pre-recorded Show</option>
-                <option value="jingle">✨ Jingle / Sweeper</option>
-                <option value="ad">🗣️ Ad / Commercial</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Tags (comma separated)</label>
-              <input type="text" id="media-tags" placeholder="pop, morning-show, intro">
-            </div>
-            <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
-              <button type="submit" id="submit-media-btn" class="btn primary-small">Upload File</button>
-            </div>
-            <p id="upload-media-status" class="status-msg" style="margin-top: 1rem;"></p>
-          </form>
+          </section>
         </div>
       </div>
-    </div>
+  </div>
+  </main>
 
-    <footer class="main-footer">
-      <p>OcaTech-Live Broadcaster Studio • Control Center v2.0</p>
-    </footer>
 
-    <!-- Metadata Modal -->
-    <div id="metadata-modal" class="modal hidden">
-      <div class="modal-content glass-card">
-        <div class="modal-header">
-          <h2><i data-lucide="edit-3"></i> Edit Recording Info</h2>
-          <button id="close-metadata-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="edit-recording-id">
+  <!-- Upload Media Modal -->
+  <div id="upload-media-modal" class="modal hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h2><i data-lucide="upload-cloud"></i> Upload Custom Audio</h2>
+        <button id="close-upload-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="upload-media-form">
           <div class="field">
-            <label>Title</label>
-            <input type="text" id="edit-recording-title" placeholder="Professional Name">
+            <label>Audio File (.mp3, .wav)</label>
+            <input type="file" id="media-file-input" accept="audio/*" required>
           </div>
           <div class="field">
-            <label>Description</label>
-            <textarea id="edit-recording-description" rows="3" placeholder="What happened in this session?"></textarea>
+            <label>Title</label>
+            <input type="text" id="media-title" placeholder="Professional Name" required>
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <select id="media-category" required class="custom-select-small">
+              <option value="music">🎵 Music Track</option>
+              <option value="show">🎙️ Pre-recorded Show</option>
+              <option value="jingle">✨ Jingle / Sweeper</option>
+              <option value="ad">🗣️ Ad / Commercial</option>
+            </select>
           </div>
           <div class="field">
             <label>Tags (comma separated)</label>
-            <input type="text" id="edit-recording-tags" placeholder="news, podcast, live">
+            <input type="text" id="media-tags" placeholder="pop, morning-show, intro">
           </div>
-        </div>
-        <div class="modal-footer">
-          <button id="save-metadata-btn" class="btn primary-small">Save Changes</button>
-          <button id="cancel-metadata-btn" class="btn ghost-small">Cancel</button>
-        </div>
+          <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="submit" id="submit-media-btn" class="btn primary-small">Upload File</button>
+          </div>
+          <p id="upload-media-status" class="status-msg" style="margin-top: 1rem;"></p>
+        </form>
       </div>
     </div>
+  </div>
+
+  <footer class="main-footer">
+    <p>OcaTech-Live Broadcaster Studio • Control Center v2.0</p>
+  </footer>
+
+  <!-- Metadata Modal -->
+  <div id="metadata-modal" class="modal hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h2><i data-lucide="edit-3"></i> Edit Recording Info</h2>
+        <button id="close-metadata-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-recording-id">
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="edit-recording-title" placeholder="Professional Name">
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <textarea id="edit-recording-description" rows="3" placeholder="What happened in this session?"></textarea>
+        </div>
+        <div class="field">
+          <label>Tags (comma separated)</label>
+          <input type="text" id="edit-recording-tags" placeholder="news, podcast, live">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="save-metadata-btn" class="btn primary-small">Save Changes</button>
+        <button id="cancel-metadata-btn" class="btn ghost-small">Cancel</button>
+      </div>
+    </div>
+  </div>
   </div>
 
   <!-- Global Playback Bar -->
@@ -639,6 +638,95 @@
     <i data-lucide="message-circle"></i>
     <span id="chat-badge" class="chat-badge hidden"></span>
   </button>
+
+  <!-- New Playlist Modal -->
+  <div id="playlist-modal" class="modal hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h2><i data-lucide="list-plus"></i> Create New Playlist</h2>
+        <button id="close-playlist-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="playlist-form">
+          <div class="field">
+            <label>Playlist Name</label>
+            <input type="text" id="playlist-name" placeholder="e.g. Afternoon Jazz Mix" required>
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <input type="text" id="playlist-description" placeholder="Brief info about this list">
+          </div>
+          <div class="form-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="submit" class="btn primary-small">Create Playlist</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Schedule Slot Modal -->
+  <div id="schedule-modal" class="modal hidden">
+    <div class="modal-content glass-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h2><i data-lucide="calendar-plus"></i> Add Program Slot</h2>
+        <button id="close-schedule-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="timezone-indicator">
+          <div class="tz-item">
+            <span class="tz-label">Local Server Time:</span>
+            <span id="local-time-display" class="tz-value">00:00:00</span>
+          </div>
+          <div class="tz-item">
+            <span class="tz-label">UTC Time (System):</span>
+            <span id="utc-time-display" class="tz-value">00:00:00</span>
+          </div>
+          <p class="section-hint" style="margin: 0; font-size: 0.7rem;">Schedules are based on the server's local
+            timezone.</p>
+        </div>
+
+        <form id="schedule-form">
+          <div class="field">
+            <label>Select Playlist</label>
+            <select id="schedule-playlist-select" required>
+              <option value="">Choose a playlist...</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Day of Week</label>
+            <select id="schedule-day" required>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+          </div>
+
+          <div class="flex-row-gap">
+            <div class="field flex-1">
+              <label>Start Time (HH:MM)</label>
+              <input type="time" id="schedule-start" required>
+            </div>
+            <div class="field flex-1">
+              <label>End Time (HH:MM)</label>
+              <input type="time" id="schedule-end" required>
+            </div>
+          </div>
+
+          <p class="section-hint" style="margin-top: 0.5rem;">The Auto-DJ will automatically switch to this playlist
+            during the specified window.</p>
+
+          <div class="form-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="submit" class="btn primary-small">Save Schedule</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
