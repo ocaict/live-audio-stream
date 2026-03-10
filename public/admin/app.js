@@ -507,6 +507,7 @@ channelSelect.addEventListener('change', () => {
   if (selectedChannelId) {
     loadPlaylists();
     loadSchedules();
+    socket.emit('join-channel', { channelId: selectedChannelId, role: 'broadcaster' });
   }
 
   const channel = myChannels.find(c => String(c.id) === String(selectedChannelId));
@@ -732,6 +733,12 @@ async function startBroadcast(channelId) {
     }
 
     socket.emit('join-channel', { channelId, role: 'broadcaster' });
+
+    // Auto-Open the chat drawer for the broadcaster
+    if (chatDrawer && !chatDrawer.classList.contains('open')) {
+      chatDrawer.classList.add('open');
+      if (chatBadge) chatBadge.classList.add('hidden');
+    }
 
     setTimeout(() => {
       socket.emit('broadcaster-ready', { channelId });
