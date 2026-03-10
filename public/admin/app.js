@@ -1101,7 +1101,7 @@ if (clearChatBtn) {
 }
 
 let chatCooldown = false;
-chatForm.addEventListener('submit', (e) => {
+if (chatForm) chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   if (chatCooldown) return;
 
