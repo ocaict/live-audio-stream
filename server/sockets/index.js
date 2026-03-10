@@ -177,7 +177,7 @@ function setupSocketHandlers(io) {
       // Verify channel ownership (Fix for Unauthorized Takeover)
       try {
         const channel = await ChannelModel.findById(channelId);
-        if (!channel || (channel.user_id !== socket.user.id && socket.user.role !== 'admin')) {
+        if (!channel || (channel.admin_id !== socket.user.id && socket.user.role !== 'admin')) {
           socket.emit('error', 'Unauthorized: You do not own this channel');
           return;
         }
@@ -198,6 +198,8 @@ function setupSocketHandlers(io) {
       const isReconnecting = channelState.isReconnecting;
 
       webrtcService.startBroadcast(socket, channelId);
+      currentChannelId = channelId;
+      isBroadcaster = true;
       console.log(`Broadcaster established on channel ${channelId} (Reconnected: ${isReconnecting})`);
 
       // Notify chat: Only if it's a fresh start (not a seamless reconnection blip)

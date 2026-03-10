@@ -1435,6 +1435,8 @@ socket.on('recording-started', (data) => {
 socket.on('recording-stopped', (data) => {
   console.log('Recording stopped:', data);
   recordingStatus.textContent = 'Recording saved!';
+  startRecordingBtn.disabled = !isLive;
+  stopRecordingBtn.disabled = true;
   loadRecordings();
 });
 
