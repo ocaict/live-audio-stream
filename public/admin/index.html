@@ -232,6 +232,25 @@
               </div>
             </section>
 
+            <!-- Recording Control — placed right after Broadcast -->
+            <section class="section-card glass-card">
+              <div class="section-header">
+                <h2><i data-lucide="disc"></i> Recording</h2>
+              </div>
+              <div class="status-banner" id="recording-status">Waiting for broadcast...</div>
+              <div class="control-actions">
+                <button id="start-recording-btn" class="btn secondary large-btn" disabled>
+                  <i data-lucide="circle"></i>
+                  <span>Record</span>
+                </button>
+                <button id="stop-recording-btn" class="btn danger large-btn" disabled>
+                  <i data-lucide="square"></i>
+                  <span>Stop</span>
+                </button>
+              </div>
+              <p id="recording-id" class="recording-id"></p>
+            </section>
+
             <!-- Broadcaster Jingle Pad (Live FX) - shown after Broadcast -->
             <section id="jingle-pad-section" class="section-card glass-card hidden">
               <div class="section-header">
@@ -280,25 +299,6 @@
                 </div>
                 <canvas id="audio-meter-canvas"></canvas>
               </div>
-            </section>
-
-            <!-- Recording Control -->
-            <section class="section-card glass-card">
-              <div class="section-header">
-                <h2><i data-lucide="disc"></i> Recording</h2>
-              </div>
-              <div class="status-banner" id="recording-status">Waiting for broadcast...</div>
-              <div class="control-actions">
-                <button id="start-recording-btn" class="btn secondary large-btn" disabled>
-                  <i data-lucide="circle"></i>
-                  <span>Record</span>
-                </button>
-                <button id="stop-recording-btn" class="btn danger large-btn" disabled>
-                  <i data-lucide="square"></i>
-                  <span>Stop</span>
-                </button>
-              </div>
-              <p id="recording-id" class="recording-id"></p>
             </section>
 
             <!-- Auto-DJ Control Panel -->

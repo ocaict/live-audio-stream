@@ -1037,7 +1037,9 @@ body {
   display: flex;
   gap: 1rem;
   padding: 0.5rem 0;
-  min-height: 80px;
+  height: 120px;
+  /* fixed, so canvas never collapses to 0 */
+  min-height: 100px;
 }
 
 .meter-labels {
@@ -1056,9 +1058,14 @@ body {
 #audio-meter-canvas {
   flex: 1;
   height: 100%;
+  /* fill the fixed meter-wrapper height */
+  min-height: 100px;
+  /* safety fallback */
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--glass-border);
+  display: block;
+  /* canvas default is inline; display:block avoids phantom whitespace */
 }
 
 /* Modal System */

@@ -924,20 +924,35 @@ stopRecordingBtn.addEventListener('click', async () => {
 });
 
 function initAudioMeter(source) {
-  if (!audioContext || !meterCtx) return;
+  if (!meterCtx) return;
 
   meterAnalyser = audioContext.createAnalyser();
   meterAnalyser.fftSize = 256;
   source.connect(meterAnalyser);
 
-  // Resize canvas to match display size
-  const dpr = window.devicePixelRatio || 1;
-  const rect = meterCanvas.getBoundingClientRect();
-  meterCanvas.width = rect.width * dpr;
-  meterCanvas.height = rect.height * dpr;
-  meterCtx.scale(dpr, dpr);
+  // Size the canvas AFTER the browser has painted the layout.
+  // getBoundingClientRect() returns 0x0 if called before first paint.
+  requestAnimationFrame(() => {
+    resizeMeterCanvas();
+    drawMeter();
+  });
 
-  drawMeter();
+  // Keep canvas buffer in sync if the panel resizes (e.g. window resize)
+  if (window._meterResizeObserver) window._meterResizeObserver.disconnect();
+  window._meterResizeObserver = new ResizeObserver(() => resizeMeterCanvas());
+  window._meterResizeObserver.observe(meterCanvas);
+}
+
+function resizeMeterCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  // offsetWidth/Height give real pixel dims even before first getBoundingClientRect
+  const w = meterCanvas.offsetWidth || meterCanvas.clientWidth || 200;
+  const h = meterCanvas.offsetHeight || meterCanvas.clientHeight || 120;
+  if (meterCanvas.width !== Math.round(w * dpr) || meterCanvas.height !== Math.round(h * dpr)) {
+    meterCanvas.width = Math.round(w * dpr);
+    meterCanvas.height = Math.round(h * dpr);
+    meterCtx.scale(dpr, dpr);
+  }
 }
 
 function stopAudioMeter() {
@@ -952,6 +967,7 @@ function stopAudioMeter() {
 
 function drawMeter() {
   if (!meterAnalyser) return;
+  // Only stop the loop if BOTH live and monitorActive are false
   if (!isLive && !monitorActive) {
     stopAudioMeter();
     return;
@@ -967,10 +983,11 @@ function drawMeter() {
     sum += dataArray[i] * dataArray[i];
   }
   const rms = Math.sqrt(sum / bufferLength);
-  const normalizedValue = Math.min(1, rms / 128); // Normalize to 0-1
+  const normalizedValue = Math.min(1, rms / 128);
 
-  const width = meterCanvas.clientWidth;
-  const height = meterCanvas.clientHeight;
+  // Always use offsetWidth/Height — they reflect CSS layout size
+  const width = meterCanvas.offsetWidth || meterCanvas.clientWidth || 200;
+  const height = meterCanvas.offsetHeight || meterCanvas.clientHeight || 120;
   meterCtx.clearRect(0, 0, width, height);
 
   // Background track
