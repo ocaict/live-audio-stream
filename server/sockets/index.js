@@ -359,11 +359,13 @@ function setupSocketHandlers(io) {
       }
 
       try {
+        const isAdminUser = socket.user && ['admin', 'broadcaster'].includes(socket.user.role);
+
         const message = await MessageModel.create({
           channel_id: targetChannelId,
           username,
           content,
-          is_admin: !!socket.user // Verified admin if socket has user attached
+          is_admin: isAdminUser // Only true if user has admin/broadcaster role
         });
 
         // Broadcast to everyone in the room
@@ -375,7 +377,8 @@ function setupSocketHandlers(io) {
     });
 
     socket.on('delete-message', async (data) => {
-      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const isAdminUser = socket.user && ['admin', 'broadcaster'].includes(socket.user.role);
+      if (!isAdminUser) { socket.emit('error', 'Auth required: Admin only'); return; }
       const { messageId, channelId } = data;
       try {
         await MessageModel.deleteById(messageId);
@@ -386,7 +389,8 @@ function setupSocketHandlers(io) {
     });
 
     socket.on('clear-chat', async (data) => {
-      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+      const isAdminUser = socket.user && ['admin', 'broadcaster'].includes(socket.user.role);
+      if (!isAdminUser) { socket.emit('error', 'Auth required: Admin only'); return; }
       const { channelId } = data;
       try {
         await MessageModel.deleteByChannelId(channelId);
