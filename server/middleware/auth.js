@@ -43,7 +43,7 @@ const requireChannelOwnership = async (req, res, next) => {
   // Admins bypass ownership checks
   if (req.user.role === 'admin') return next();
 
-  const channelId = req.params.id || req.body.channelId;
+  const channelId = req.params.id || req.body.channelId || req.query.channelId || req.channelId;
   if (!channelId) return res.status(400).json({ error: 'Channel ID required' });
 
   try {

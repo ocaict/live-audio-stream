@@ -37,26 +37,40 @@ const recordingController = {
     try {
       const id = uuidv4();
       const filename = `${id}.wav`;
+      const today = new Date().toISOString().split('T')[0];
+      const recordingsDir = getRecordingsDir();
+      const dateDir = path.join(recordingsDir, today);
 
-      // Collect chunks
-      const chunks = [];
-      for await (const chunk of req) {
-        chunks.push(chunk);
+      if (!fs.existsSync(dateDir)) {
+        fs.mkdirSync(dateDir, { recursive: true });
       }
-      const buffer = Buffer.concat(chunks);
 
+      const tempFilePath = path.join(dateDir, filename);
+
+      // Stream request body directly to disk to prevent RAM exhaustion (Issue #10)
+      await new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(tempFilePath);
+        req.pipe(writeStream);
+        req.on('end', resolve);
+        req.on('error', reject);
+        writeStream.on('error', reject);
+      });
+
+      let filesize = fs.statSync(tempFilePath).size;
       let filePath = '';
-      let filesize = buffer.length;
       let cloudUrl = '';
 
       // Upload to Cloudinary if enabled
       if (cloudinaryService.isEnabled()) {
         try {
-          console.log('Uploading to Cloudinary...');
-          const result = await cloudinaryService.uploadAudio(buffer, filename);
+          console.log('Uploading to Cloudinary from disk...');
+          const result = await cloudinaryService.uploadAudioFile(tempFilePath, filename);
           cloudUrl = result.url;
           filePath = result.publicId; // Store public_id for deletion
           console.log('Uploaded to Cloudinary:', cloudUrl);
+
+          // Remove the local temp file after successful upload
+          fs.unlinkSync(tempFilePath);
         } catch (cloudError) {
           console.error('Cloudinary upload failed:', cloudError);
           // Fall back to local storage
@@ -64,18 +78,9 @@ const recordingController = {
         }
       }
 
-      // If Cloudinary failed or not enabled, save locally
+      // If Cloudinary failed or not enabled, keep the local file
       if (!cloudUrl) {
-        const today = new Date().toISOString().split('T')[0];
-        const recordingsDir = getRecordingsDir();
-        const dateDir = path.join(recordingsDir, today);
-
-        if (!fs.existsSync(dateDir)) {
-          fs.mkdirSync(dateDir, { recursive: true });
-        }
-
-        filePath = path.join(dateDir, filename);
-        fs.writeFileSync(filePath, buffer);
+        filePath = tempFilePath;
       }
 
       const recording = {

@@ -46,6 +46,36 @@ async function uploadAudio(buffer, filename) {
   });
 }
 
+async function uploadAudioFile(filePath, filename) {
+  if (!isConfigured) {
+    throw new Error('Cloudinary not configured');
+  }
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload(
+      filePath,
+      {
+        resource_type: 'auto',
+        folder: CONFIG.CLOUDINARY_FOLDER,
+        public_id: filename.replace(/\.[^/.]+$/, ''),
+        format: filename.split('.').pop()
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+            format: result.format,
+            size: result.bytes
+          });
+        }
+      }
+    );
+  });
+}
+
 async function deleteAudio(publicId) {
   if (!isConfigured) {
     throw new Error('Cloudinary not configured');
@@ -73,6 +103,7 @@ configureCloudinary();
 
 module.exports = {
   uploadAudio,
+  uploadAudioFile,
   deleteAudio,
   isEnabled,
   configureCloudinary
