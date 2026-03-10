@@ -9,7 +9,6 @@ const autoDJService = require('../services/autoDJService');
 const ScheduleModel = require('../models/schedule');
 
 function setupSocketHandlers(io) {
-  // Authentication middleware
   io.use((socket, next) => {
     try {
       const cookies = cookie.parse(socket.handshake.headers.cookie || '');
@@ -19,13 +18,16 @@ function setupSocketHandlers(io) {
         const user = AuthService.verifyToken(token);
         if (user) {
           socket.user = user;
+          console.log(`[Socket Auth] Success for user ${user.username} (${socket.id})`);
+        } else {
+          console.warn(`[Socket Auth] Invalid token provided for socket ${socket.id}`);
         }
+      } else {
+        console.log(`[Socket Auth] No token cookie found for socket ${socket.id}`);
       }
-      // We allow everyone to connect (public listeners), 
-      // but we will check socket.user for broadcaster-specific events.
       next();
     } catch (err) {
-      console.error('Socket authentication error:', err.message);
+      console.error(`[Socket Auth] Error for socket ${socket.id}:`, err.message);
       next();
     }
   });

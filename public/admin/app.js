@@ -341,6 +341,15 @@ async function checkAuth() {
     const res = await apiFetch('/api/auth/check');
     const data = await res.json();
     if (data.authenticated) {
+      // Force socket to reconnect to ensure it has the latest session cookie
+      if (window.socket && !socket.connected) {
+        socket.connect();
+      } else if (window.socket) {
+        // Even if connected, it might have connected before the cookie was set/updated
+        console.log('[Auth] Syncing socket session...');
+        socket.disconnect().connect();
+      }
+
       showDashboard(data.user);
       await loadRTCConfig();
       loadMyChannels();
@@ -1449,7 +1458,16 @@ socket.io.on('reconnect', (attempt) => {
   loadMyChannels();
 });
 
-socket.on('error', m => alert(m));
+socket.on('error', (msg) => {
+  if (msg === 'Authentication required to broadcast') {
+    console.warn('[Socket] Authentication required. Resyncing session...');
+    socket.disconnect().connect();
+    // After reconnecting, we might want to retry the last action, 
+    // but usually the UI state allows the user to just try again.
+  } else {
+    alert(msg);
+  }
+});
 
 checkAuth();
 
