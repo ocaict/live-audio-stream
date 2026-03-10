@@ -34,6 +34,13 @@ function setupSocketHandlers(io) {
     let currentChannelId = null;
     let isBroadcaster = false;
 
+    // Helper: Verify this socket is the active broadcaster for the channel
+    const checkIsBroadcaster = (channelId) => {
+      if (!channelId) return false;
+      const bcSocket = webrtcService.getBroadcasterSocket(channelId);
+      return bcSocket && bcSocket.id === socket.id;
+    };
+
     console.log('Client connected:', socket.id, socket.handshake.address);
 
     socket.on('disconnect', async () => {
@@ -162,6 +169,11 @@ function setupSocketHandlers(io) {
         return;
       }
 
+      if (!socket.user) {
+        socket.emit('error', 'Authentication required to broadcast');
+        return;
+      }
+
       // Stop Auto-DJ immediately when a real broadcaster takes over
       if (autoDJService.isRunning(channelId)) {
         console.log(`[AutoDJ] Real broadcaster took over channel ${channelId}. Stopping Auto-DJ.`);
@@ -190,6 +202,11 @@ function setupSocketHandlers(io) {
       const channelId = data?.channelId || currentChannelId;
       if (!channelId) {
         socket.emit('error', 'No channel specified');
+        return;
+      }
+
+      if (!checkIsBroadcaster(channelId)) {
+        socket.emit('error', 'Unauthorized: Not the active broadcaster');
         return;
       }
 
@@ -234,6 +251,11 @@ function setupSocketHandlers(io) {
       const { sdp, socketId, channelId } = data;
       const targetChannelId = channelId || currentChannelId;
 
+      if (!checkIsBroadcaster(targetChannelId)) {
+        console.warn(`[Security] Unauthorized answer emit from ${socket.id}`);
+        return;
+      }
+
       webrtcService.sendToListener(targetChannelId, socketId, 'answer', { sdp });
     });
 
@@ -242,11 +264,14 @@ function setupSocketHandlers(io) {
       const targetChannelId = channelId || currentChannelId;
 
       if (target === 'broadcaster') {
+        // Listener sending to broadcaster
         webrtcService.sendToBroadcaster(targetChannelId, 'ice-candidate', {
           candidate,
           socketId: socket.id
         });
       } else {
+        // Broadcaster sending to listener (must authenticate)
+        if (!checkIsBroadcaster(targetChannelId)) return;
         webrtcService.sendToListener(targetChannelId, target, 'ice-candidate', { candidate });
       }
     });
@@ -255,6 +280,11 @@ function setupSocketHandlers(io) {
       const channelId = data?.channelId || currentChannelId;
       if (!channelId) {
         socket.emit('error', 'No channel specified');
+        return;
+      }
+
+      if (!checkIsBroadcaster(channelId)) {
+        socket.emit('error', 'Unauthorized: Not the active broadcaster');
         return;
       }
 
@@ -272,6 +302,12 @@ function setupSocketHandlers(io) {
 
     socket.on('stop-recording', async (data) => {
       const channelId = data?.channelId || currentChannelId;
+
+      if (!checkIsBroadcaster(channelId)) {
+        socket.emit('error', 'Unauthorized: Not the active broadcaster');
+        return;
+      }
+
       if (!recordingService.isRecording(channelId)) {
         socket.emit('error', 'No recording in progress for this channel');
         return;
@@ -286,6 +322,9 @@ function setupSocketHandlers(io) {
     });
 
     socket.on('audio-chunk', (chunk) => {
+      // Must be the authorized broadcaster to supply chunks
+      if (!checkIsBroadcaster(currentChannelId)) return;
+
       if (currentChannelId && recordingService.isRecording(currentChannelId)) {
         recordingService.writeChunk(currentChannelId, Buffer.from(chunk));
       }
