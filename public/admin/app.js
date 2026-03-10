@@ -967,11 +967,6 @@ function stopAudioMeter() {
 
 function drawMeter() {
   if (!meterAnalyser) return;
-  // Only stop the loop if BOTH live and monitorActive are false
-  if (!isLive && !monitorActive) {
-    stopAudioMeter();
-    return;
-  }
 
   const bufferLength = meterAnalyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
