@@ -174,6 +174,19 @@ function setupSocketHandlers(io) {
         return;
       }
 
+      // Verify channel ownership (Fix for Unauthorized Takeover)
+      try {
+        const channel = await ChannelModel.findById(channelId);
+        if (!channel || (channel.user_id !== socket.user.id && socket.user.role !== 'admin')) {
+          socket.emit('error', 'Unauthorized: You do not own this channel');
+          return;
+        }
+      } catch (err) {
+        console.error('[Socket] Authorization error:', err.message);
+        socket.emit('error', 'Server error during authorization');
+        return;
+      }
+
       // Stop Auto-DJ immediately when a real broadcaster takes over
       if (autoDJService.isRunning(channelId)) {
         console.log(`[AutoDJ] Real broadcaster took over channel ${channelId}. Stopping Auto-DJ.`);

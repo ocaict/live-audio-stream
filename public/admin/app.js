@@ -387,6 +387,13 @@ async function login(username, password) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     await loadRTCConfig();
+
+    // Force socket to reconnect so it picks up the login cookie for authentication
+    if (window.socket) {
+      console.log('[Auth] Reconnecting socket to pick up session...');
+      socket.disconnect().connect();
+    }
+
     showDashboard(data.user);
     loadMyChannels();
   } catch (e) {
@@ -2458,3 +2465,22 @@ if (muteMicBtn) {
     console.log(`[Audio] Microphone ${isMuted ? 'MUTED' : 'UNMUTED'}`);
   });
 }
+
+/**
+ * Socket Auto-Rejoin & Re-auth Logic
+ * Ensures that if the socket disconnects and reconnects (blips, or login re-handshake),
+ * the server-side channel state and broadcaster authorization are restored.
+ */
+socket.on('connect', () => {
+  console.log('[Socket] Connected / Reconnected. ID:', socket.id);
+
+  if (typeof selectedChannelId !== 'undefined' && selectedChannelId) {
+    console.log('[Socket] Auto-joining channel:', selectedChannelId);
+    socket.emit('join-channel', { channelId: selectedChannelId, role: 'broadcaster' });
+
+    if (typeof isLive !== 'undefined' && isLive) {
+      console.log('[Socket] Resuming live broadcaster status for channel:', selectedChannelId);
+      socket.emit('broadcaster-ready', { channelId: selectedChannelId });
+    }
+  }
+});
