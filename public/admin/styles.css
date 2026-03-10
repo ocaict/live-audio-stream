@@ -457,17 +457,88 @@ body {
   margin-bottom: 0;
 }
 
-.control-actions {
-  display: flex;
-  gap: 1rem;
+/* ========================================
+   LIBRARY TAB — Two-column split layout
+   ======================================== */
+.library-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
 }
 
-/* Recordings List */
+@media (max-width: 960px) {
+  .library-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.library-col {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+/* Scrollable list inside each library column */
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.library-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.library-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+/* Compact recording item for list view */
+.library-list .recording-item {
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.library-list .rec-title {
+  font-size: 0.88rem;
+  margin-bottom: 0;
+}
+
+.library-list .rec-meta {
+  font-size: 0.72rem;
+  margin-top: 1px;
+}
+
+.library-list .media-badge {
+  font-size: 0.65rem;
+  padding: 1px 7px;
+}
+
+.library-list .btn-icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* Recordings List — general (non-library) */
 .recordings-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+
+.control-actions {
+  display: flex;
+  gap: 1rem;
+}
+
 
 .recording-item {
   background: var(--card-nested);
@@ -1270,7 +1341,7 @@ body {
   opacity: 0.85;
 }
 
-/* Playlist & Schedule Layout */
+/* Playlist & Schedule Layout — legacy split-view kept for reference */
 .split-view {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -1290,6 +1361,49 @@ body {
   border-radius: 16px;
   padding: 1.25rem;
   border: 1px solid var(--glass-border);
+}
+
+/* New scheduling grid — 3-column with Playlists taking 1 and Schedule taking 2 */
+.scheduling-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .scheduling-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduling-grid .sched-col[style] {
+    grid-column: span 1 !important;
+  }
+}
+
+.sched-col {
+  margin-bottom: 0;
+}
+
+.sched-col h2 i {
+  color: var(--secondary);
+}
+
+/* Scrollable playlist list */
+.sched-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.sched-scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sched-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
 }
 
 .mini-list {
@@ -1404,9 +1518,12 @@ body {
 /* Jingle Pad Grid */
 .jingle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
   margin-top: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .jingle-btn {
