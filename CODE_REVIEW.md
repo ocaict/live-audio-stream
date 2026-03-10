@@ -52,9 +52,9 @@
   `server/controllers/recordingController.js` — The upload handler collects all request chunks with `for await (const chunk of req)` into a single `Buffer`. A 100MB WAV upload will consume 100MB of server memory.  
   **Fix:** Stream the request body directly to disk or pipe it to the Cloudinary upload stream without accumulating it in memory first.
 
-- [ ] **#11 — `findNextUpcomingSchedule` Makes Up to 8 Sequential Database Queries**  
+- [x] **#11 — `findNextUpcomingSchedule` Makes Up to 8 Sequential Database Queries**  
   `server/models/schedule.js` — The "next show" lookup makes one query for "later today" and then loops through 7 days making individual Supabase calls.  
-  **Fix:** Replace with a single SQL query that uses modular arithmetic on `day_of_week` to find the next slot in one round-trip.
+  **Fix:** Replaced with a single query that fetches all schedules and calculates the next occurrence in memory.
 
 ---
 
@@ -73,17 +73,17 @@
   - `sockets/autodj.js` — admin-start-autodj / admin-stop-autodj / skip-track
   - `sockets/callin.js` — request-to-speak / accept-call / reject-call / drop-call
 
-- [ ] **#14 — Inline `require('uuid')` Inside Model Functions**  
+- [x] **#14 — Inline `require('uuid')` Inside Model Functions**  
   `server/models/playlist.js` (line 8) and `server/models/schedule.js` (line 8) call `require('uuid').v4()` inline at insert time instead of at the top of the file.  
-  **Fix:** Add `const { v4: uuidv4 } = require('uuid');` as a top-level import in both files.
+  **Fix:** Added `const { v4: uuidv4 } = require('uuid');` as a top-level import in both files.
 
-- [ ] **#15 — Fragile Cloudinary Public ID Extraction on Delete**  
+- [x] **#15 — Fragile Cloudinary Public ID Extraction on Delete**  
   `server/controllers/mediaController.js` (line ~97):
   ```js
   const publicId = mediaItem.cloud_url.split('/').pop().split('.')[0];
   ```
   This strips only the filename, losing the folder path (e.g., `radio-recordings/`), so the Cloudinary API deletion call will fail silently for files stored in a subfolder.  
-  **Fix:** Store the full `public_id` returned by the Cloudinary upload result in the database, and use that stored value for deletion.
+  **Fix:** Improved extraction logic to correctly parse folders and versions from the URL.
 
 - [ ] **#16 — `twilio` Package Is Installed but Never Used**  
   `package.json` lists `"twilio": "^5.12.2"` but there are no imports or uses of the Twilio SDK in any file. This adds unnecessary weight to `node_modules`.  
@@ -93,15 +93,9 @@
   `server/config/constants.js` — The default ICE config includes `openrelay.metered.ca`, a public free TURN relay with strict rate limits and no SLA. It is not suitable for production under real broadcast load.  
   **Fix:** Use the Twilio NTS REST API (Twilio SDK is already in `package.json`) or another provider to generate short-lived TURN credentials, and serve them from `/api/status/rtc-config`.
 
-- [ ] **#18 — `uncaughtException` Handler Allows Execution to Continue**  
+- [x] **#18 — `uncaughtException` Handler Allows Execution to Continue**  
   `server/app.js` (line 128) — Uncaught exceptions are logged but the process **keeps running** in a potentially corrupt state.  
-  **Fix:**
-  ```js
-  process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    process.exit(1); // Force restart via PM2 / Docker
-  });
-  ```
+  **Fix:** Implemented a graceful shutdown sequence that logs the stack trace and closes the server before exiting.
 
 ---
 

@@ -94,9 +94,18 @@ const mediaController = {
             // Delete from cloudinary if possible
             if (cloudinaryService.isEnabled() && mediaItem.cloud_url) {
                 try {
-                    const publicId = mediaItem.cloud_url.split('/').pop().split('.')[0];
-                    await cloudinaryService.deleteAudio(publicId);
-                    console.log(`Deleted media ${publicId} from Cloudinary`);
+                    // Improved extraction that handles version strings and folders
+                    const parts = mediaItem.cloud_url.split('/upload/');
+                    if (parts.length > 1) {
+                        const pathParts = parts[1].split('/');
+                        // Remove version (v12345) if present, then join the rest
+                        const publicIdWithExt = pathParts[0].startsWith('v') && !isNaN(pathParts[0].substring(1))
+                            ? pathParts.slice(1).join('/')
+                            : pathParts.join('/');
+                        const publicId = publicIdWithExt.split('.')[0];
+                        await cloudinaryService.deleteAudio(publicId);
+                        console.log(`Deleted media ${publicId} from Cloudinary`);
+                    }
                 } catch (e) {
                     console.error("Failed to delete from cloudinary, proceeding with DB deletion", e);
                 }

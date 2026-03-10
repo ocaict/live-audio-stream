@@ -1,11 +1,12 @@
 const { supabase: getSupabase } = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
 
 const PlaylistModel = {
     async create(playlist) {
         const { data, error } = await getSupabase()
             .from('playlists')
             .insert([{
-                id: playlist.id || require('uuid').v4(),
+                id: playlist.id || uuidv4(),
                 channel_id: playlist.channel_id,
                 name: playlist.name,
                 description: playlist.description || '',

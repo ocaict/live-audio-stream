@@ -1,11 +1,12 @@
 const { supabase: getSupabase } = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
 
 const ScheduleModel = {
     async create(schedule) {
         const { data, error } = await getSupabase()
             .from('schedules')
             .insert([{
-                id: schedule.id || require('uuid').v4(),
+                id: schedule.id || uuidv4(),
                 channel_id: schedule.channel_id,
                 playlist_id: schedule.playlist_id,
                 day_of_week: schedule.day_of_week, // 0-6 (Sun-Sat)
@@ -118,37 +119,29 @@ const ScheduleModel = {
         const currentTime = now.getUTCHours().toString().padStart(2, '0') + ':' +
             now.getUTCMinutes().toString().padStart(2, '0') + ':00';
 
-        // 1. Check for later today
-        const { data: todayLater, error: error1 } = await getSupabase()
+        // Fetch all enabled schedules for this channel in a single round-trip
+        const { data: schedules, error } = await getSupabase()
             .from('schedules')
             .select('*, playlists(name)')
             .eq('channel_id', channelId)
-            .eq('day_of_week', currentDay)
-            .eq('is_enabled', true)
-            .gt('start_time', currentTime)
-            .order('start_time', { ascending: true })
-            .limit(1)
-            .maybeSingle();
+            .eq('is_enabled', true);
 
-        if (todayLater) return todayLater;
+        if (error || !schedules || schedules.length === 0) return null;
 
-        // 2. Check for upcoming days
-        for (let i = 1; i <= 7; i++) {
-            const nextDay = (currentDay + i) % 7;
-            const { data: nextDays, error: error2 } = await getSupabase()
-                .from('schedules')
-                .select('*, playlists(name)')
-                .eq('channel_id', channelId)
-                .eq('day_of_week', nextDay)
-                .eq('is_enabled', true)
-                .order('start_time', { ascending: true })
-                .limit(1)
-                .maybeSingle();
+        // Find the one that occurs soonest from "now"
+        const sorted = schedules.map(s => {
+            let daysUntil = (s.day_of_week - currentDay + 7) % 7;
+            // If it's today but the start time has already passed, it actually occurs in 7 days
+            if (daysUntil === 0 && s.start_time <= currentTime) {
+                daysUntil = 7;
+            }
+            return { ...s, daysUntil };
+        }).sort((a, b) => {
+            if (a.daysUntil !== b.daysUntil) return a.daysUntil - b.daysUntil;
+            return a.start_time.localeCompare(b.start_time);
+        });
 
-            if (nextDays) return nextDays;
-        }
-
-        return null;
+        return sorted[0] || null;
     }
 };
 

@@ -124,6 +124,12 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  // Optional: Graceful shutdown if needed
+  console.error('CRITICAL: Uncaught Exception:', error.message);
+  console.error(error.stack);
+
+  // Attempt to close connections before exiting
+  setTimeout(() => process.exit(1), 3000).unref();
+  server.close(() => {
+    process.exit(1);
+  });
 });
