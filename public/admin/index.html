@@ -332,15 +332,15 @@
         </section>
 
         <!-- Live Chat Section -->
-        <section class="section-card glass-card chat-section">
+        <section id="chat-drawer" class="section-card glass-card chat-section">
           <div class="section-header">
-            <h2><i data-lucide="messages-square"></i> Live Message Board</h2>
+            <h2><i data-lucide="messages-square"></i> Community Chat</h2>
             <div class="header-actions">
+              <button id="close-chat-btn" class="close-chat-btn" title="Close Chat"><i data-lucide="x"></i></button>
               <button id="clear-chat-btn" class="btn-small danger-small" title="Clear all messages">
                 <i data-lucide="trash-2"></i>
-                <span>Clear Chat</span>
+                <span>Clear</span>
               </button>
-              <div id="chat-status" class="status-msg small">Connected</div>
             </div>
           </div>
           <div class="chat-container">
@@ -635,6 +635,11 @@
       <i data-lucide="x"></i>
     </button>
   </div>
+  <button id="chat-toggle-floating" class="chat-toggle-floating" title="Open Community Chat">
+    <i data-lucide="message-circle"></i>
+    <span id="chat-badge" class="chat-badge hidden"></span>
+  </button>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socketUrl = window.SERVER_URL || '';

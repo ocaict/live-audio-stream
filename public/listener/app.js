@@ -144,6 +144,10 @@ const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatUsernameInput = document.getElementById('chat-username');
+const chatPanel = document.querySelector('.chat-panel');
+const chatToggleBtn = document.getElementById('chat-toggle-btn');
+const closeChatBtn = document.getElementById('close-chat-btn');
+const chatBadge = document.getElementById('chat-badge');
 
 // Library Overlay DOM
 const viewLibraryBtn = document.getElementById('view-library-btn');
@@ -770,6 +774,24 @@ function appendMessage(msg) {
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Badge logic: if drawer is closed and message is not mine
+  if (chatPanel && !chatPanel.classList.contains('open') && !isOwn && chatBadge) {
+    chatBadge.classList.remove('hidden');
+  }
+}
+
+if (chatToggleBtn) {
+  chatToggleBtn.addEventListener('click', () => {
+    chatPanel.classList.add('open');
+    if (chatBadge) chatBadge.classList.add('hidden');
+  });
+}
+
+if (closeChatBtn) {
+  closeChatBtn.addEventListener('click', () => {
+    chatPanel.classList.remove('open');
+  });
 }
 
 let chatCooldown = false;

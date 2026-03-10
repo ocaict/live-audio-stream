@@ -1812,9 +1812,75 @@ body.broadcasting-live .clock-indicator {
   transform: scale(1.1);
 }
 
-/* --- Admin Chat Message Board --- */
+/* --- Admin Chat Panel (Transformed to Floating Drawer) --- */
+.chat-section {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  /* Hidden by default */
+  width: 420px;
+  max-width: 95%;
+  height: 100vh;
+  z-index: 9000;
+  border-radius: 0;
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--bg-dark);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.6);
+  margin: 0;
+}
+
+.chat-section.open {
+  right: 0;
+}
+
+.chat-toggle-floating {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 8000;
+  box-shadow: 0 10px 30px var(--primary-glow);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chat-toggle-floating:hover {
+  transform: scale(1.1);
+  box-shadow: 0 15px 40px var(--primary-glow);
+}
+
+.chat-toggle-floating i {
+  width: 32px;
+  height: 32px;
+}
+
+.chat-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  background: var(--success);
+  border-radius: 50%;
+  border: 2px solid var(--bg-dark);
+}
+
 .chat-container {
-  height: 400px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: rgba(0, 0, 0, 0.2);
@@ -1822,6 +1888,18 @@ body.broadcasting-live .clock-indicator {
   border: 1px solid var(--glass-border);
   overflow: hidden;
   margin-bottom: 1rem;
+}
+
+.close-chat-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 5px;
+}
+
+.close-chat-btn:hover {
+  color: white;
 }
 
 .chat-messages {

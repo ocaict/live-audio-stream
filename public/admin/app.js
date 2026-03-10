@@ -82,6 +82,10 @@ const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatStatus = document.getElementById('chat-status');
+const chatDrawer = document.getElementById('chat-drawer');
+const chatToggleBtn = document.getElementById('chat-toggle-floating');
+const closeChatBtn = document.getElementById('close-chat-btn');
+const chatBadge = document.getElementById('chat-badge');
 
 // Playlists & Schedule DOM refs
 const playlistsList = document.getElementById('playlists-list');
@@ -1005,6 +1009,24 @@ function appendMessage(msg) {
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Badge Logic: if drawer closed and not my message
+  if (chatDrawer && !chatDrawer.classList.contains('open') && !isOwn && chatBadge) {
+    chatBadge.classList.remove('hidden');
+  }
+}
+
+if (chatToggleBtn) {
+  chatToggleBtn.addEventListener('click', () => {
+    chatDrawer.classList.add('open');
+    if (chatBadge) chatBadge.classList.add('hidden');
+  });
+}
+
+if (closeChatBtn) {
+  closeChatBtn.addEventListener('click', () => {
+    chatDrawer.classList.remove('open');
+  });
 }
 
 window.deleteMessage = (messageId) => {

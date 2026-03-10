@@ -110,7 +110,12 @@
       <div class="chat-panel glass-card">
         <div class="chat-header">
           <h3><i data-lucide="messages-square"></i> Live Chat</h3>
-          <span id="chat-status" class="chat-status">Connected</span>
+          <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
+            <span id="chat-status" class="chat-status">Connected</span>
+            <button id="close-chat-btn" class="close-chat-btn" title="Close Chat">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
         </div>
         <div id="chat-messages" class="chat-messages">
           <div class="chat-placeholder">Welcome! Join the conversation below.</div>
@@ -191,6 +196,11 @@
       <div class="overlay-footer">Enjoy our premium archive of past live sets and shows.</div>
     </div>
   </div>
+  <!-- Floating Chat Toggle -->
+  <button id="chat-toggle-btn" class="chat-toggle-btn" title="Open Chat">
+    <i data-lucide="messages-square"></i>
+    <span id="chat-badge" class="chat-badge hidden"></span>
+  </button>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
