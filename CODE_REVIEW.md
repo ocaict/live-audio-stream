@@ -8,27 +8,27 @@
 
 ## 🔴 Critical Issues (Security / Data Integrity)
 
-- [ ] **#1 — Unauthorized Broadcaster Takeover & Socket Event Forgery (High Severity)**  
+- [x] **#1 — Unauthorized Broadcaster Takeover & Socket Event Forgery (High Severity)**  
   `server/sockets/index.js` — Not only does the `broadcaster-ready` event fail to verify channel ownership, but **all** broadcast control events (`start-recording`, `stop-recording`, `audio-chunk`, `stop-broadcasting`) completely lack admin/ownership validation. A malicious listener can connect and freely emit `audio-chunk` to overwrite the live stream, or `stop-broadcasting` to kick the legitimate broadcaster off the air causing Denial of Service.
   **Fix:** Implement a robust `isAdminOrBroadcaster` validation layer inside the socket event handlers.
 
-- [ ] **#2 — DOM-Based Cross-Site Scripting (XSS) in Chat (High Severity)**
+- [x] **#2 — DOM-Based Cross-Site Scripting (XSS) in Chat (High Severity)**
   `public/admin/app.js` and `public/listener/app.js` — Chat messages are inserted directly using `innerHTML` (e.g. `div.innerHTML = ... <div class="chat-bubble">${msg.content}</div>`). Because `msg.content` is untrusted database input, any user can post malicious HTML or JavaScript (like `<script>alert('hack')</script>` or `<img src=x onerror=.../>`), which will be executed on all listeners' and broadcasters' browsers!
   **Fix:** Use `textContent` for the message string, or sanitize `msg.content` via a library like `DOMPurify` before injecting it into the DOM.
 
-- [ ] **#3 — Incorrect `is_admin` Flag in Chat Messages**  
+- [x] **#3 — Incorrect `is_admin` Flag in Chat Messages**  
   `server/sockets/index.js` (line ~332) — The comment reads *"Verified admin if socket has user attached"*, but the code is `is_admin: !!socket.user`. This marks **every logged-in broadcaster** as an admin in the chat, not just users with `role === 'admin'`.  
   **Fix:** Change to `is_admin: socket.user?.role === 'admin'`.
 
-- [ ] **#4 — `requireChannelOwnership` Bypassed on Recording Upload**  
+- [x] **#4 — `requireChannelOwnership` Bypassed on Recording Upload**  
   `server/routes/recordings.js` — The upload route stores the channel ID on `req.channelId` (from the `X-Channel-Id` header), but the `requireChannelOwnership` middleware reads from `req.params.id || req.body.channelId`. Neither is set for this route, so the ownership check silently passes for any authenticated user.  
   **Fix:** Either pass the channel ID through `req.body.channelId`, or make `requireChannelOwnership` aware of `req.channelId`.
 
-- [ ] **#5 — Unauthenticated Recording Stream Endpoint**  
+- [x] **#5 — Unauthenticated Recording Stream Endpoint**  
   `server/routes/recordings.js` — The `GET /:id/stream` route has **no `authenticateToken` middleware**. Any user who knows a recording's UUID can stream it without being logged in.  
   **Fix:** Add `authenticateToken` (and optionally `requireRecordingOwnership`) to the stream route, or make the access model explicit if public streaming is intentional.
 
-- [ ] **#6 — `delete-message` and `clear-chat` Not Restricted to Admins**  
+- [x] **#6 — `delete-message` and `clear-chat` Not Restricted to Admins**  
   `server/sockets/index.js` — Both socket handlers check `!!socket.user` (any authenticated user), allowing any broadcaster to delete messages or wipe entire channel chat rooms.  
   **Fix:** Add `socket.user?.role === 'admin'` check, or at minimum verify the user owns the channel.
 
@@ -36,11 +36,11 @@
 
 ## 🟠 Important Issues (Correctness / Stability)
 
-- [ ] **#7 — AutoDJ Unbounded In-Memory PCM Buffer**  
+- [x] **#7 — AutoDJ Unbounded In-Memory PCM Buffer**  
   `server/services/autoDJService.js` — The `_streamTrack` method accumulates the full decoded PCM of each track with `Buffer.concat([buffer, data])` before drip-feeding it. A 5-minute mono 44.1kHz track = ~26MB per channel in RAM. With many active channels, this is a memory time-bomb.  
   **Fix:** Use a Node.js `PassThrough` stream or a fixed-size ring buffer, and pipe the FFmpeg output in real-time rather than buffering entirely.
 
-- [ ] **#8 — AutoDJ Infinite Error Retry Loop**  
+- [x] **#8 — AutoDJ Infinite Error Retry Loop**  
   `server/services/autoDJService.js` — On FFmpeg error, the handler calls `setTimeout(() => this._playNext(channelId), 500)`. If every track in the queue fails (e.g., Cloudinary returns 403 for all), this creates an infinite loop with no circuit breaker or max-retry logic.  
   **Fix:** Track consecutive failures per session and abort/emit an `error` event after a configurable threshold (e.g., 3 consecutive failures).
 
@@ -48,7 +48,7 @@
   `server/models/playlist.js` — `updateItems` calls `clearMedia()` then inserts new items as two separate Supabase operations. A concurrent request during the window between clear and re-insert can see an empty playlist.  
   **Fix:** Wrap the operation in a Supabase RPC (stored procedure) or use a database transaction to ensure atomicity.
 
-- [ ] **#10 — Recording Upload Buffers Entire File in RAM**  
+- [x] **#10 — Recording Upload Buffers Entire File in RAM**  
   `server/controllers/recordingController.js` — The upload handler collects all request chunks with `for await (const chunk of req)` into a single `Buffer`. A 100MB WAV upload will consume 100MB of server memory.  
   **Fix:** Stream the request body directly to disk or pipe it to the Cloudinary upload stream without accumulating it in memory first.
 
