@@ -194,20 +194,25 @@ function setupSocketHandlers(io) {
         io.to(channelId).emit('autodj-stopped', { channelId, reason: 'broadcaster_took_over' });
       }
 
-      webrtcService.startBroadcast(socket, channelId);
-      console.log(`Broadcaster established on channel ${channelId}`);
+      const channelState = webrtcService.getOrCreateChannel(channelId);
+      const isReconnecting = channelState.isReconnecting;
 
-      // Notify chat: Broadcaster joined
-      try {
-        const systemMsg = await MessageModel.create({
-          channel_id: channelId,
-          username: 'System',
-          content: `🎙️ Broadcaster is now LIVE! Welcome to the show.`,
-          is_system: true
-        });
-        io.to(channelId).emit('new-message', systemMsg);
-      } catch (err) {
-        console.error('Failed to send join-broadcast system message:', err.message);
+      webrtcService.startBroadcast(socket, channelId);
+      console.log(`Broadcaster established on channel ${channelId} (Reconnected: ${isReconnecting})`);
+
+      // Notify chat: Only if it's a fresh start (not a seamless reconnection blip)
+      if (!isReconnecting) {
+        try {
+          const systemMsg = await MessageModel.create({
+            channel_id: channelId,
+            username: 'System',
+            content: `🎙️ Broadcaster is now LIVE! Welcome to the show.`,
+            is_system: true
+          });
+          io.to(channelId).emit('new-message', systemMsg);
+        } catch (err) {
+          console.error('Failed to send join-broadcast system message:', err.message);
+        }
       }
     });
 
