@@ -1838,6 +1838,7 @@ body.broadcasting-live .clock-indicator {
   display: flex;
   flex-direction: column;
   max-width: 85%;
+  width: fit-content;
   align-self: flex-start;
   animation: slide-in 0.2s ease-out;
 }
@@ -1858,19 +1859,29 @@ body.broadcasting-live .clock-indicator {
 }
 
 .chat-bubble {
-  padding: 8px 12px;
-  background: var(--card-nested);
+  padding: 8px 14px;
+  background: #2d2d3d;
+  /* Darker Gray for listeners */
   border: 1px solid var(--glass-border);
-  border-radius: 10px 10px 10px 0;
-  font-size: 0.9rem;
+  border-radius: 4px 12px 12px 12px;
+  font-size: 0.95rem;
   line-height: 1.4;
   word-break: break-word;
+  color: #fff;
 }
 
 .own .chat-bubble {
+  background: var(--primary);
+  /* Vibrant Pink/Red for me */
+  border-color: rgba(255, 45, 85, 0.4);
+  border-radius: 12px 4px 12px 12px;
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+/* Also show other broadcasters as distinct but on the left */
+.message-item.is-admin:not(.own) .chat-bubble {
   background: rgba(255, 45, 85, 0.1);
-  border-color: rgba(255, 45, 85, 0.3);
-  border-radius: 10px 10px 0 10px;
+  border: 1px solid rgba(255, 45, 85, 0.3);
 }
 
 .message-item.is-system {

@@ -575,12 +575,12 @@ footer {
 }
 
 .chat-bubble {
-  padding: 0.5rem 0.75rem;
-  background: rgba(32, 44, 51, 0.85);
-  /* WhatsApp dark incoming feel */
+  padding: 0.65rem 0.85rem;
+  background: #202c33;
+  /* Dark Gray - Incoming */
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px 8px 8px 0;
-  font-size: 0.9rem;
+  border-radius: 4px 12px 12px 12px;
+  font-size: 0.95rem;
   line-height: 1.4;
   word-break: break-word;
   color: #e9edef;
@@ -588,11 +588,10 @@ footer {
 }
 
 .own .chat-bubble {
-  background: rgba(0, 92, 75, 0.85);
-  /* WhatsApp dark outgoing */
-  border-color: rgba(0, 242, 234, 0.15);
-  border-radius: 8px 8px 0 8px;
-  box-shadow: 0 4px 15px var(--primary-glow);
+  background: #005c4b;
+  /* Teal/Green - Outgoing */
+  border-color: rgba(0, 242, 234, 0.1);
+  border-radius: 12px 4px 12px 12px;
 }
 
 /* System Message (Centered, Gray) */

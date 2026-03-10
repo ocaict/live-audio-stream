@@ -173,13 +173,17 @@ function setupSocketHandlers(io) {
       console.log(`Broadcaster established on channel ${channelId}`);
 
       // Notify chat: Broadcaster joined
-      const systemMsg = await MessageModel.create({
-        channel_id: channelId,
-        username: 'System',
-        content: `🎙️ Broadcaster is now LIVE! Welcome to the show.`,
-        is_system: true
-      });
-      io.to(channelId).emit('new-message', systemMsg);
+      try {
+        const systemMsg = await MessageModel.create({
+          channel_id: channelId,
+          username: 'System',
+          content: `🎙️ Broadcaster is now LIVE! Welcome to the show.`,
+          is_system: true
+        });
+        io.to(channelId).emit('new-message', systemMsg);
+      } catch (err) {
+        console.error('Failed to send join-broadcast system message:', err.message);
+      }
     });
 
     socket.on('stop-broadcasting', async (data) => {

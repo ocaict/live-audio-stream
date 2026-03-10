@@ -159,7 +159,12 @@ let allRecordings = []; // For filtering
 
 // Load saved username
 if (chatUsernameInput) {
-  chatUsernameInput.value = localStorage.getItem('chatUsername') || '';
+  let savedName = localStorage.getItem('chatUsername');
+  if (!savedName) {
+    savedName = `Anonymous-${Math.floor(1000 + Math.random() * 9000)}`;
+    localStorage.setItem('chatUsername', savedName);
+  }
+  chatUsernameInput.value = savedName;
 }
 
 // Initialize volume

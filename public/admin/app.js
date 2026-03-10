@@ -983,11 +983,12 @@ socket.on('chat-cleared', (data) => {
 
 function appendMessage(msg) {
   const currentUsername = document.getElementById('header-username')?.textContent || 'Broadcaster';
-  const isOwn = msg.username === currentUsername || msg.username === 'Broadcaster' || msg.username === 'admin' || msg.is_admin;
+  const isOwn = msg.username === currentUsername;
+  const isAdmin = msg.is_admin === true;
   const isSystem = msg.is_system === true;
 
   const div = document.createElement('div');
-  div.className = `message-item ${isOwn ? 'own' : ''} ${isSystem ? 'is-system' : ''}`;
+  div.className = `message-item ${isOwn ? 'own' : ''} ${isSystem ? 'is-system' : ''} ${isAdmin ? 'is-admin' : ''}`;
   div.dataset.id = msg.id;
 
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
