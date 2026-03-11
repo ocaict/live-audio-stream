@@ -109,9 +109,9 @@
   `server/app.js` (line 128) — Uncaught exceptions are logged but the process **keeps running** in a potentially corrupt state.  
   **Fix:** Implemented a graceful shutdown sequence that logs the stack trace and closes the server before exiting.
 
-- [ ] **#32 — Missing "Hang Up" / End Call Button for Callers**
+- [x] **#32 — Missing "Hang Up" / End Call Button for Callers**
   `public/listener/app.js` — Once a call request is accepted, the button is disabled. The listener has no way to end the call voluntarily and must wait for the producer to drop them.
-  **Fix:** Toggle the button state to a red "End Call" button when `callState === 'connected'`.
+  **Fix:** Enabled the button after connection and added a red "End Call" state (`hangup` class) that allows listeners to disconnect themselves at any time.
 
 - [ ] **#33 — Call-In System Race Conditions**
   `public/admin/app.js` — The `activeCall` state is a single shared object. If a producer accepts a new call while an existing one is still cleaning up or negotiating, it can lead to orphaned RTCPeerConnections and audio nodes.

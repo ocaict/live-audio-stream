@@ -1125,7 +1125,7 @@ function resetCallState() {
 
   callState = 'idle';
   if (requestMicBtn) {
-    requestMicBtn.classList.remove('pending', 'active');
+    requestMicBtn.classList.remove('pending', 'active', 'hangup');
     requestMicBtn.querySelector('span').textContent = 'Request to Speak';
     requestMicBtn.disabled = false;
   }
@@ -1194,10 +1194,10 @@ socket.on('call-accepted', async () => {
     socket.emit('call-offer', { sdp: offer.sdp, channelId: State.channelId });
 
     callState = 'connected';
-    requestMicBtn.classList.remove('pending');
-    requestMicBtn.classList.add('active');
-    requestMicBtn.querySelector('span').textContent = 'Live on Air';
-    requestMicBtn.disabled = true;
+    requestMicBtn.classList.remove('pending', 'active');
+    requestMicBtn.classList.add('hangup'); 
+    requestMicBtn.querySelector('span').textContent = 'End Call';
+    requestMicBtn.disabled = false; // Enabled so user can hang up
     if (callStatusMsg) callStatusMsg.textContent = '● You are LIVE on air';
 
   } catch (err) {

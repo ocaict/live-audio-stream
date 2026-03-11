@@ -358,8 +358,20 @@ main {
 }
 
 .call-btn.active {
-  background: #10b981;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   animation: pulse-green 2s infinite;
+}
+
+.call-btn.hangup {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  animation: pulse-red 2s infinite;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
 .call-status-msg {
