@@ -32,6 +32,10 @@
   `server/sockets/index.js` — Both socket handlers check `!!socket.user` (any authenticated user), allowing any broadcaster to delete messages or wipe entire channel chat rooms.  
   **Fix:** Add `socket.user?.role === 'admin'` check, or at minimum verify the user owns the channel.
 
+- [ ] **#29 — Unprotected Call-In Signaling Events (High Severity)**
+  `server/sockets/index.js` — The events `accept-call`, `reject-call`, and `drop-call` only check for `!!socket.user`. Any malicious authenticated user can emit these events with a forged `targetSocketId` to hijack or terminate calls on channels they do not own.
+  **Fix:** Implement channel ownership verification for all call control events.
+
 ---
 
 ## 🟠 Important Issues (Correctness / Stability)
@@ -55,6 +59,14 @@
 - [x] **#11 — `findNextUpcomingSchedule` Makes Up to 8 Sequential Database Queries**  
   `server/models/schedule.js` — The "next show" lookup makes one query for "later today" and then loops through 7 days making individual Supabase calls.  
   **Fix:** Replaced with a single query that fetches all schedules and calculates the next occurrence in memory.
+
+- [ ] **#30 — Ghost Caller Problem / Connection Leak**
+  `server/sockets/index.js` — When a listener who is "Live on Air" disconnects abruptly (tab close/network drop), the server removes them as a listener but never notifies the broadcaster. The broadcaster's UI continues to show them as an active caller.
+  **Fix:** Add a check in the `disconnect` handler to emit `call-dropped` to the broadcaster if the disconnecting socket was the active caller.
+
+- [ ] **#31 — Caller Audio Feedback Loop (Echo)**
+  `public/listener/app.js` — Callers hear their own voice with a 2-5 second delay through the main stream player, making it nearly impossible to maintain a conversation.
+  **Fix:** Automatically mute the main `<audio>` stream player on the listener side whenever the `callState` is 'connected'.
 
 ---
 
@@ -96,6 +108,14 @@
 - [x] **#18 — `uncaughtException` Handler Allows Execution to Continue**  
   `server/app.js` (line 128) — Uncaught exceptions are logged but the process **keeps running** in a potentially corrupt state.  
   **Fix:** Implemented a graceful shutdown sequence that logs the stack trace and closes the server before exiting.
+
+- [ ] **#32 — Missing "Hang Up" / End Call Button for Callers**
+  `public/listener/app.js` — Once a call request is accepted, the button is disabled. The listener has no way to end the call voluntarily and must wait for the producer to drop them.
+  **Fix:** Toggle the button state to a red "End Call" button when `callState === 'connected'`.
+
+- [ ] **#33 — Call-In System Race Conditions**
+  `public/admin/app.js` — The `activeCall` state is a single shared object. If a producer accepts a new call while an existing one is still cleaning up or negotiating, it can lead to orphaned RTCPeerConnections and audio nodes.
+  **Fix:** Implement a state lock (e.g., `isNegotiating`) to prevent overlapping call acceptances.
 
 ---
 
