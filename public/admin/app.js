@@ -2357,6 +2357,11 @@ socket.on('call-offer', async (data) => {
     const pc = new RTCPeerConnection(rtcConfig);
     activeCall.pc = pc;
 
+    // ADDED: Send broadcaster's mic stream back to caller (Return Feed)
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
+    }
+
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
         socket.emit('call-ice', {

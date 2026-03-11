@@ -14,6 +14,10 @@ let rtcGain = null;
 let currentActiveSource = null; // 'rtc', 'dj'
 const SOURCE_FADE_MS = 1000; // 1 second crossfade between sources
 
+// Call-In Return Feed Nodes
+let callReturnSource = null;
+let callReturnGain = null;
+
 // Auto-DJ State
 let djIsActive = false;
 const trackStates = new Map();
@@ -51,6 +55,11 @@ function initMasterAudio() {
 
     rtcGain = audioCtx.createGain();
     rtcGain.connect(masterGain);
+
+    // Call return feed setup
+    callReturnGain = audioCtx.createGain();
+    callReturnGain.connect(masterGain);
+    callReturnGain.gain.value = 0; // Muted by default
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(e => console.warn('[Audio] Resume failed (Autoplay):', e));
@@ -1103,6 +1112,17 @@ function resetCallState() {
   if (callPC) { callPC.close(); callPC = null; }
   if (callStream) { callStream.getTracks().forEach(t => t.stop()); callStream = null; }
 
+  // Restoring main player volume
+  if (masterGain && audioCtx) {
+    masterGain.gain.setTargetAtTime(State.volume, audioCtx.currentTime, 0.5);
+  }
+  
+  // Cleanup return feed nodes
+  if (callReturnSource) { callReturnSource.disconnect(); callReturnSource = null; }
+  if (callReturnGain) {
+    callReturnGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+  }
+
   callState = 'idle';
   if (requestMicBtn) {
     requestMicBtn.classList.remove('pending', 'active');
@@ -1137,11 +1157,30 @@ socket.on('call-accepted', async () => {
   callState = 'accepted';
   if (callStatusMsg) callStatusMsg.textContent = 'Call accepted! Connecting mic...';
 
+  // Proactively init audio context to ensure we can mute/play return feed
+  initMasterAudio();
+
+  // Muting main station volume to prevent echo (Delayed Feedback)
+  if (masterGain && audioCtx) {
+    masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+  }
+
   try {
     callStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
     callPC = new RTCPeerConnection(rtcConfig);
     callStream.getTracks().forEach(track => callPC.addTrack(track, callStream));
+
+    // Handle return feed from Broadcaster
+    callPC.ontrack = (event) => {
+      console.log('[Call-In] Received return audio track from Broadcaster!');
+      const stream = event.streams[0];
+      if (audioCtx && callReturnGain) {
+        callReturnSource = audioCtx.createMediaStreamSource(stream);
+        callReturnSource.connect(callReturnGain);
+        callReturnGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.1);
+      }
+    };
 
     callPC.onicecandidate = ({ candidate }) => {
       if (candidate) {

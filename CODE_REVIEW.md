@@ -64,9 +64,9 @@
   `server/sockets/index.js` — When a listener who is "Live on Air" disconnects abruptly (tab close/network drop), the server removes them as a listener but never notifies the broadcaster. The broadcaster's UI continues to show them as an active caller.
   **Fix:** Automatically emit `call-request-cancelled` to the broadcaster on listener disconnect/leave. The broadcaster's UI now cleans up both the queue and active air-time sessions.
 
-- [ ] **#31 — Caller Audio Feedback Loop (Echo)**
+- [x] **#31 — Caller Audio Feedback Loop (Echo)**
   `public/listener/app.js` — Callers hear their own voice with a 2-5 second delay through the main stream player, making it nearly impossible to maintain a conversation.
-  **Fix:** Automatically mute the main `<audio>` stream player on the listener side whenever the `callState` is 'connected'.
+  **Fix:** Switched to a "Return Feed" architecture. The main player is automatically muted for callers, and the broadcaster's voice is sent back via low-latency WebRTC. This enables real-time Q&A without any echo.
 
 ---
 
