@@ -26,10 +26,29 @@ const CONFIG = {
 
   // WebRTC Configuration
   ICE_SERVERS: process.env.ICE_SERVERS ? JSON.parse(process.env.ICE_SERVERS) : [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    {
+      urls: "stun:stun.relay.metered.ca:80"
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "34c4ada2a6750249005f4c44",
+      credential: "Mla96sBIVmDrZFSX"
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "34c4ada2a6750249005f4c44",
+      credential: "Mla96sBIVmDrZFSX"
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "34c4ada2a6750249005f4c44",
+      credential: "Mla96sBIVmDrZFSX"
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "34c4ada2a6750249005f4c44",
+      credential: "Mla96sBIVmDrZFSX"
+    }
   ],
 
   // Cloudinary Configuration
@@ -42,6 +61,8 @@ const CONFIG = {
   // Supabase Configuration
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_KEY: process.env.SUPABASE_KEY || '',
+  METERED_API_KEY: process.env.METERED_API_KEY || '',
+  METERED_APP_NAME: process.env.METERED_APP_NAME || 'ocatech-live',
 };
 
 CONFIG.validate = () => {

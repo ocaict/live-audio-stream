@@ -147,7 +147,7 @@ const PEAK_HOLD_MAX = 60; // 1 second @ 60fps
 
 let rtcConfig = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' }
+    { urls: 'stun:stun.relay.metered.ca:80' }
   ]
 };
 

@@ -101,9 +101,9 @@
   `package.json` lists `"twilio": "^5.12.2"` but there are no imports or uses of the Twilio SDK in any file. This adds unnecessary weight to `node_modules`.  
   **Action:** Either remove the dependency, or use it to generate short-lived TURN credentials dynamically via the Twilio Network Traversal Service (see #16).
 
-- [ ] **#17 — Public/Free TURN Server Used as Default ICE Config**  
-  `server/config/constants.js` — The default ICE config includes `openrelay.metered.ca`, a public free TURN relay with strict rate limits and no SLA. It is not suitable for production under real broadcast load.  
-  **Fix:** Use the Twilio NTS REST API (Twilio SDK is already in `package.json`) or another provider to generate short-lived TURN credentials, and serve them from `/api/status/rtc-config`.
+- [x] **#17 — Public/Free TURN Server Used as Default ICE Config**  
+  `server/config/constants.js` — The default ICE config includes `openrelay.metered.ca`, which is not suitable for production.  
+  **Fix:** Created a dynamic RTC configuration system. The app now fetches fresh, private TURN credentials from Metered.ca via a backend proxy, ensuring a high connection success rate.
 
 - [x] **#18 — `uncaughtException` Handler Allows Execution to Continue**  
   `server/app.js` (line 128) — Uncaught exceptions are logged but the process **keeps running** in a potentially corrupt state.  
