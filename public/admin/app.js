@@ -129,6 +129,7 @@ const closePbBtn = document.getElementById('close-pb-btn');
 
 let pendingCallers = [];
 let activeCall = null; // { socketId, username, pc, streamNode, gainNode }
+let isCallNegotiating = false; // Lock to prevent race conditions during WebRTC handshake
 let broadcastStartTime = null;
 
 let allPlaylists = [];
@@ -2291,12 +2292,13 @@ function renderCallQueue() {
 }
 
 window.acceptCall = async (socketId, username) => {
-  if (activeCall) {
-    alert('One call at a time! Drop the current call first.');
+  if (activeCall || isCallNegotiating) {
+    alert('One call at a time! Drop or finish the current call first.');
     return;
   }
 
-  console.log(`[Call-In] Accepting call from ${username} (${socketId})`);
+  isCallNegotiating = true;
+  console.log(`[Call-In] Accepting call from ${username} (${socketId})...`);
   socket.emit('accept-call', { channelId: selectedChannelId, targetSocketId: socketId });
 
   activeCall = { socketId, username };
@@ -2320,7 +2322,11 @@ window.dropCall = (socketId) => {
     if (activeCall.streamNode) activeCall.streamNode.disconnect();
     if (activeCall.gainNode) activeCall.gainNode.disconnect();
     activeCall = null;
+    isCallNegotiating = false; // Always clear lock on drop
     if (activeCallBadge) activeCallBadge.classList.add('hidden');
+  } else {
+    // Even if no activeCall object, if we were hung in negotiation, reset it
+    isCallNegotiating = false;
   }
 
   renderCallQueue();
@@ -2343,6 +2349,7 @@ socket.on('call-request-cancelled', (data) => {
     if (activeCall.streamNode) activeCall.streamNode.disconnect();
     if (activeCall.gainNode) activeCall.gainNode.disconnect();
     activeCall = null;
+    isCallNegotiating = false;
     if (activeCallBadge) activeCallBadge.classList.add('hidden');
   }
   
@@ -2400,8 +2407,11 @@ socket.on('call-offer', async (data) => {
       targetSocketId: data.socketId
     });
 
+    isCallNegotiating = false; // Unlock once negotiation is complete
+
   } catch (err) {
     console.error('[Call-In] Failed to handle call offer:', err);
+    isCallNegotiating = false;
     dropCall(data.socketId);
   }
 });
