@@ -60,9 +60,9 @@
   `server/models/schedule.js` — The "next show" lookup makes one query for "later today" and then loops through 7 days making individual Supabase calls.  
   **Fix:** Replaced with a single query that fetches all schedules and calculates the next occurrence in memory.
 
-- [ ] **#30 — Ghost Caller Problem / Connection Leak**
+- [x] **#30 — Ghost Caller Problem / Connection Leak**
   `server/sockets/index.js` — When a listener who is "Live on Air" disconnects abruptly (tab close/network drop), the server removes them as a listener but never notifies the broadcaster. The broadcaster's UI continues to show them as an active caller.
-  **Fix:** Add a check in the `disconnect` handler to emit `call-dropped` to the broadcaster if the disconnecting socket was the active caller.
+  **Fix:** Automatically emit `call-request-cancelled` to the broadcaster on listener disconnect/leave. The broadcaster's UI now cleans up both the queue and active air-time sessions.
 
 - [ ] **#31 — Caller Audio Feedback Loop (Echo)**
   `public/listener/app.js` — Callers hear their own voice with a 2-5 second delay through the main stream player, making it nearly impossible to maintain a conversation.

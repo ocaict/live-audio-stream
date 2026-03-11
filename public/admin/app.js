@@ -2335,6 +2335,17 @@ socket.on('call-request', (data) => {
 
 socket.on('call-request-cancelled', (data) => {
   pendingCallers = pendingCallers.filter(c => c.socketId !== data.socketId);
+  
+  // Cleanup active call if the caller disconnected/cancelled
+  if (activeCall && activeCall.socketId === data.socketId) {
+    console.log('[Call-In] Active caller disconnected/cancelled:', data.socketId);
+    if (activeCall.pc) activeCall.pc.close();
+    if (activeCall.streamNode) activeCall.streamNode.disconnect();
+    if (activeCall.gainNode) activeCall.gainNode.disconnect();
+    activeCall = null;
+    if (activeCallBadge) activeCallBadge.classList.add('hidden');
+  }
+  
   renderCallQueue();
 });
 

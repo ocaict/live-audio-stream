@@ -69,6 +69,8 @@ function setupSocketHandlers(io) {
           });
         } else {
           webrtcService.removeListener(socket.id, currentChannelId);
+          // Notify broadcaster so they can remove from queue/active call
+          webrtcService.sendToBroadcaster(currentChannelId, 'call-request-cancelled', { socketId: socket.id });
         }
       }
     });
@@ -125,6 +127,8 @@ function setupSocketHandlers(io) {
         socket.leave(currentChannelId);
         if (!isBroadcaster) {
           webrtcService.removeListener(socket.id, currentChannelId);
+          // Notify broadcaster
+          webrtcService.sendToBroadcaster(currentChannelId, 'call-request-cancelled', { socketId: socket.id });
         }
         currentChannelId = null;
         isBroadcaster = false;
@@ -158,6 +162,9 @@ function setupSocketHandlers(io) {
       if (currentChannelId) {
         webrtcService.removeListener(socket.id, currentChannelId);
         socket.leave(currentChannelId);
+        
+        // Notify broadcaster
+        webrtcService.sendToBroadcaster(currentChannelId, 'call-request-cancelled', { socketId: socket.id });
 
         const listenerCount = webrtcService.getChannelListenerCount(currentChannelId);
         io.to(currentChannelId).emit('listener-count', { channelId: currentChannelId, count: listenerCount });
