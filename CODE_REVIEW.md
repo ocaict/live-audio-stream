@@ -32,9 +32,9 @@
   `server/sockets/index.js` — Both socket handlers check `!!socket.user` (any authenticated user), allowing any broadcaster to delete messages or wipe entire channel chat rooms.  
   **Fix:** Add `socket.user?.role === 'admin'` check, or at minimum verify the user owns the channel.
 
-- [ ] **#29 — Unprotected Call-In Signaling Events (High Severity)**
+- [x] **#29 — Unprotected Call-In Signaling Events (High Severity)**
   `server/sockets/index.js` — The events `accept-call`, `reject-call`, and `drop-call` only check for `!!socket.user`. Any malicious authenticated user can emit these events with a forged `targetSocketId` to hijack or terminate calls on channels they do not own.
-  **Fix:** Implement channel ownership verification for all call control events.
+  **Fix:** Implemented channel ownership and active broadcaster verification for all call control and Auto-DJ admin events.
 
 ---
 

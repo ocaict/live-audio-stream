@@ -423,10 +423,26 @@ function setupSocketHandlers(io) {
     });
 
     // ── Admin: Manual Auto-DJ controls ──────────────────────────
-    socket.on('admin-start-autodj', (data) => {
-      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+    const verifyChannelOwnership = async (channelId) => {
+      if (!socket.user) return false;
+      if (socket.user.role === 'admin') return true;
+      try {
+        const channel = await ChannelModel.findById(channelId);
+        return channel && String(channel.admin_id) === String(socket.user.id);
+      } catch (e) {
+        return false;
+      }
+    };
+
+    socket.on('admin-start-autodj', async (data) => {
       const channelId = data?.channelId;
       if (!channelId) { socket.emit('error', 'channelId required'); return; }
+
+      if (!(await verifyChannelOwnership(channelId))) {
+        socket.emit('error', 'Unauthorized: You do not own this channel');
+        return;
+      }
+
       if (webrtcService.isChannelLive(channelId)) {
         socket.emit('error', 'Cannot start Auto-DJ: channel is currently live');
         return;
@@ -438,10 +454,14 @@ function setupSocketHandlers(io) {
       socket.emit('autodj-control-ack', { started: true, channelId });
     });
 
-    socket.on('admin-stop-autodj', (data) => {
-      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+    socket.on('admin-stop-autodj', async (data) => {
       const channelId = data?.channelId;
       if (!channelId) { socket.emit('error', 'channelId required'); return; }
+
+      if (!(await verifyChannelOwnership(channelId))) {
+        socket.emit('error', 'Unauthorized: You do not own this channel');
+        return;
+      }
       autoDJService.setAutoDJEnabled(channelId, false);
       autoDJService.stop(channelId);
       io.to(channelId).emit('autodj-stopped', { channelId, reason: 'admin_stopped' });
@@ -450,10 +470,14 @@ function setupSocketHandlers(io) {
       socket.emit('autodj-control-ack', { stopped: true, channelId });
     });
 
-    socket.on('admin-skip-track', (data) => {
-      if (!socket.user) { socket.emit('error', 'Auth required'); return; }
+    socket.on('admin-skip-track', async (data) => {
       const channelId = data?.channelId;
       if (!channelId) { socket.emit('error', 'channelId required'); return; }
+
+      if (!(await verifyChannelOwnership(channelId))) {
+        socket.emit('error', 'Unauthorized: You do not own this channel');
+        return;
+      }
       autoDJService.skipTrack(channelId);
     });
 
@@ -486,21 +510,24 @@ function setupSocketHandlers(io) {
     });
 
     socket.on('accept-call', (data) => {
-      if (!socket.user) return;
       const { channelId, targetSocketId } = data;
+      if (!checkIsBroadcaster(channelId)) {
+        console.warn(`[Security] Unauthorized accept-call from ${socket.id}`);
+        return;
+      }
       console.log(`[Call-In] Broadcaster on ${channelId} accepted call from ${targetSocketId}`);
       webrtcService.sendToListener(channelId, targetSocketId, 'call-accepted', { channelId });
     });
 
     socket.on('reject-call', (data) => {
-      if (!socket.user) return;
       const { channelId, targetSocketId } = data;
+      if (!checkIsBroadcaster(channelId)) return;
       webrtcService.sendToListener(channelId, targetSocketId, 'call-rejected', { channelId });
     });
 
     socket.on('drop-call', (data) => {
-      if (!socket.user) return;
       const { channelId, targetSocketId } = data;
+      if (!checkIsBroadcaster(channelId)) return;
       webrtcService.sendToListener(channelId, targetSocketId, 'call-dropped', { channelId });
     });
 
@@ -512,6 +539,7 @@ function setupSocketHandlers(io) {
 
     socket.on('call-answer', (data) => {
       const { sdp, targetSocketId, channelId } = data;
+      if (!checkIsBroadcaster(channelId)) return;
       webrtcService.sendToListener(channelId, targetSocketId, 'call-answer', { sdp });
     });
 
@@ -520,6 +548,8 @@ function setupSocketHandlers(io) {
       if (toBroadcaster) {
         webrtcService.sendToBroadcaster(channelId, 'call-ice', { candidate, socketId: socket.id });
       } else {
+        // Broadcaster sending to listener (must authenticate)
+        if (!checkIsBroadcaster(channelId)) return;
         webrtcService.sendToListener(channelId, targetSocketId, 'call-ice', { candidate });
       }
     });
