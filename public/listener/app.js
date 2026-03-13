@@ -234,6 +234,7 @@ if (shareBtn) {
 let authClient = null;
 const authOverlay = document.getElementById('auth-overlay');
 const authTriggerBtn = document.getElementById('auth-trigger-btn');
+const profileTriggerBtn = document.getElementById('profile-trigger-btn');
 const closeAuthBtn = document.getElementById('close-auth-btn');
 const authForm = document.getElementById('auth-form');
 const googleLoginBtn = document.getElementById('google-login-btn');
@@ -276,6 +277,7 @@ function updateAuthUI(session) {
     
     // Update Header
     authTriggerBtn.classList.add('hidden');
+    if (profileTriggerBtn) profileTriggerBtn.classList.remove('hidden');
     userInfoDropdown.classList.add('hidden'); // Ensure closed by default
     userProfileSection.classList.remove('hidden');
     
@@ -285,19 +287,29 @@ function updateAuthUI(session) {
     // Update initials
     const initials = displayName.substring(0, 2).toUpperCase();
     document.getElementById('user-initials').textContent = initials;
+    const headerInitialsEl = document.getElementById('header-small-initials');
+    if (headerInitialsEl) headerInitialsEl.textContent = initials;
     
     // Avatar handling
     const avatarUrl = metadata.avatar_url || metadata.picture;
     const avatarImg = document.getElementById('user-avatar');
     const initialsEl = document.getElementById('user-initials');
+    const headerAvatarImg = document.getElementById('header-small-avatar');
     
     if (avatarUrl) {
       avatarImg.src = avatarUrl;
       avatarImg.classList.remove('hidden');
       initialsEl.classList.add('hidden');
+      if (headerAvatarImg) {
+        headerAvatarImg.src = avatarUrl;
+        headerAvatarImg.classList.remove('hidden');
+        if (headerInitialsEl) headerInitialsEl.classList.add('hidden');
+      }
     } else {
       avatarImg.classList.add('hidden');
       initialsEl.classList.remove('hidden');
+      if (headerAvatarImg) headerAvatarImg.classList.add('hidden');
+      if (headerInitialsEl) headerInitialsEl.classList.remove('hidden');
     }
     
     // Update chat username if it's currently anonymous
@@ -324,6 +336,7 @@ function updateAuthUI(session) {
   } else {
     // Guest State
     authTriggerBtn.classList.remove('hidden');
+    if (profileTriggerBtn) profileTriggerBtn.classList.add('hidden');
     userInfoDropdown.classList.add('hidden');
     State.user = null;
     if (socket) socket.auth = {};
@@ -345,10 +358,19 @@ if (closeAuthBtn) {
 }
 
 // User Profile Click (Toggle Dropdown)
-if (userProfileSection) {
-  userProfileSection.addEventListener('click', (e) => {
-    if (e.target.closest('.auth-trigger-btn')) return;
+if (profileTriggerBtn) {
+  profileTriggerBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // prevent document click from firing immediately
     userInfoDropdown.classList.toggle('hidden');
+  });
+}
+
+// Ensure clicking inside the dropdown doesn't close it instantly
+if (userInfoDropdown) {
+  userInfoDropdown.addEventListener('click', (e) => {
+    if (e.target.id !== 'logout-btn') {
+      e.stopPropagation();
+    }
   });
 }
 
