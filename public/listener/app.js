@@ -14,6 +14,19 @@ let rtcGain = null;
 let currentActiveSource = null; // 'rtc', 'dj'
 const SOURCE_FADE_MS = 1000; // 1 second crossfade between sources
 
+// Haptic Feedback Helper
+function haptics(type = 'light') {
+  if (!window.navigator || !window.navigator.vibrate) return;
+  const patterns = {
+    light: 10,
+    medium: 30,
+    heavy: 60,
+    success: [20, 50, 20],
+    error: [50, 100, 50]
+  };
+  window.navigator.vibrate(patterns[type] || patterns.light);
+}
+
 // Call-In Return Feed Nodes
 let callReturnSource = null;
 let callReturnGain = null;
@@ -120,6 +133,7 @@ const channelSelect = document.getElementById('channel-select');
 const channelList = document.getElementById('channel-list');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeIcon = document.getElementById('volume-icon');
+const ptrIndicator = document.getElementById('ptr-indicator');
 
 // Tune-In Overlay Elements
 const tuneInOverlay = document.getElementById('tune-in-overlay');
@@ -237,6 +251,7 @@ if (volumeIcon) {
 // Logic for Premium "Tune In" Overlay
 if (tuneInBtn) {
   tuneInBtn.addEventListener('click', () => {
+    haptics('medium');
     console.log('[TuneIn] User initiated playback');
 
     // 1. Hide the overlay with the fade transition
@@ -271,8 +286,8 @@ function updateVolumeSliderBackground(vol) {
 }
 
 function refreshUI() {
-  const selectedOption = channelSelect.options[channelSelect.selectedIndex];
-  const uiLive = selectedOption?.dataset?.live === 'true';
+  const channel = State.channels.find(c => String(c.id) === String(State.channelId));
+  const uiLive = channel ? channel.isLive : false;
 
   const statusLabel = liveIndicator.querySelector('.status-label');
   if (statusLabel) {
@@ -358,7 +373,7 @@ function renderChannelSelector() {
 
   // Populate hidden select
   channelSelect.innerHTML = State.channels.map(ch =>
-    `<option value="${ch.id}" ${String(ch.id) === String(savedId) ? 'selected' : ''}>${ch.name}</option>`
+    `<option value="${ch.id}" ${String(ch.id) === String(savedId) ? 'selected' : ''} ${ch.isLive ? 'data-live="true"' : ''}>${ch.name}</option>`
   ).join('');
 
   // Populate visual cards
@@ -373,6 +388,7 @@ function renderChannelSelector() {
     // Add click events to cards
     channelList.querySelectorAll('.channel-card').forEach(card => {
       card.addEventListener('click', () => {
+        haptics('medium');
         const cid = card.dataset.id;
         State.commit('channelId', cid);
         channelSelect.value = cid;
@@ -852,6 +868,7 @@ function appendMessage(msg) {
 
 if (chatToggleBtn) {
   chatToggleBtn.addEventListener('click', () => {
+    haptics('medium');
     chatPanel.classList.add('open');
     if (chatBadge) chatBadge.classList.add('hidden');
     updateNavActive(navChatBtn);
@@ -903,6 +920,7 @@ if (navChatBtn) {
 
 if (closeChatBtn) {
   closeChatBtn.addEventListener('click', () => {
+    haptics('light');
     chatPanel.classList.remove('open');
     updateNavActive(navLiveBtn); // Default back to Live when chat closes
   });
@@ -912,6 +930,7 @@ let chatCooldown = false;
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   if (chatCooldown) return;
+  haptics('medium');
 
   const content = chatInput.value.trim();
   const username = chatUsernameInput.value.trim() || 'Anonymous';
@@ -1546,3 +1565,79 @@ if (librarySearch) {
 
 // Global exposure for onclick
 window.playFromArchive = playFromArchive;
+
+// --- NATIVE MOBILE UX: PULL TO REFRESH ---
+let touchStartPos = 0;
+let pullDistance = 0;
+const PULL_THRESHOLD = 80;
+
+document.addEventListener('touchstart', (e) => {
+  // Only trigger if at the top of the body/main container
+  if (window.scrollY <= 5) {
+    touchStartPos = e.touches[0].pageY;
+  } else {
+    touchStartPos = 0;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (touchStartPos === 0 || ptrIndicator.classList.contains('refreshing')) return;
+
+  const currentPos = e.touches[0].pageY;
+  pullDistance = currentPos - touchStartPos;
+
+  if (pullDistance > 0) {
+    if (pullDistance > 10) {
+      ptrIndicator.classList.add('pulling');
+      // Limit the visual pull
+      const visualPull = Math.min(pullDistance * 0.5, PULL_THRESHOLD + 20);
+      ptrIndicator.style.top = `calc(env(safe-area-inset-top) + ${visualPull - 40}px)`;
+      ptrIndicator.style.transform = `translateX(-50%) rotate(${pullDistance * 2}deg)`;
+    }
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  if (touchStartPos === 0 || ptrIndicator.classList.contains('refreshing')) return;
+
+  if (pullDistance >= PULL_THRESHOLD) {
+    refreshContent();
+  } else {
+    resetPTR();
+  }
+  touchStartPos = 0;
+  pullDistance = 0;
+});
+
+async function refreshContent() {
+  ptrIndicator.classList.add('refreshing');
+  ptrIndicator.style.top = `calc(env(safe-area-inset-top) + 20px)`;
+  haptics('success');
+
+  try {
+    // Refresh core data
+    await Promise.all([
+      loadChannels(),
+      loadRTCConfig()
+    ]);
+    
+    // Also refresh current overlay if open
+    if (!scheduleOverlay.classList.contains('hidden')) {
+      await fetchSchedule(State.channelId);
+    }
+    if (!libraryOverlay.classList.contains('hidden')) {
+      await fetchLibrary(State.channelId);
+    }
+  } catch (e) {
+    console.error('[PTR] Refresh failed:', e);
+    haptics('error');
+  } finally {
+    setTimeout(resetPTR, 500);
+  }
+}
+
+function resetPTR() {
+  ptrIndicator.classList.remove('pulling', 'refreshing');
+  ptrIndicator.style.top = `calc(env(safe-area-inset-top) - 40px)`;
+  ptrIndicator.style.transform = `translateX(-50%) rotate(0deg)`;
+}

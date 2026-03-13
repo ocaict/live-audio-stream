@@ -43,7 +43,46 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 0 1.5rem 80px 1.5rem; /* Increased bottom padding for nav bar */
+  padding: env(safe-area-inset-top) 1.5rem calc(90px + env(safe-area-inset-bottom)) 1.5rem;
+  position: relative;
+}
+
+.ptr-indicator {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) - 40px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px var(--primary-glow);
+  z-index: 5000;
+  opacity: 0;
+  transition: opacity 0.3s, top 0.1s;
+  pointer-events: none;
+}
+
+.ptr-indicator i {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.ptr-indicator.pulling {
+  opacity: 1;
+}
+
+.ptr-indicator.refreshing i {
+  animation: ptr-spin 1s linear infinite;
+}
+
+@keyframes ptr-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 header {
@@ -354,11 +393,12 @@ main {
 
 /* Call-In Styles */
 .call-in-controls {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  animation: slideUpFade 0.4s ease-out;
 }
 
 .call-btn {
@@ -863,13 +903,13 @@ footer {
     bottom: -100%;
     right: 0;
     width: 100% !important;
-    height: 80vh !important;
+    height: 85vh !important;
     border-radius: 32px 32px 0 0 !important;
     border-top: 1px solid var(--glass-border);
     border-left: none;
     transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 2001;
-    padding: 1rem 1.5rem 80px 1.5rem;
+    padding: 1rem 1.5rem calc(80px + env(safe-area-inset-bottom)) 1.5rem;
   }
 
   .chat-panel.open {
@@ -944,16 +984,17 @@ footer {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 75px;
+  height: calc(75px + env(safe-area-inset-bottom));
   background: rgba(15, 15, 25, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
   display: flex;
   justify-content: space-around;
-  align-items: center;
-  z-index: 1000;
-  padding-bottom: env(safe-area-inset-bottom);
+  align-items: flex-start;
+  padding-top: 15px;
+  z-index: 3000;
+  transition: transform 0.3s ease;
 }
 
 .nav-item {
@@ -1442,6 +1483,7 @@ footer {
     background: rgba(15, 15, 25, 0.8) !important;
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Different animation for bottom sheet */
