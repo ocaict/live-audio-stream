@@ -202,6 +202,33 @@ const archiveAudioPlayer = document.getElementById('archive-audio-player');
 const libraryPlayerContainer = document.getElementById('library-player-container');
 const lpTitle = document.getElementById('lp-title');
 const returnToRadioBtn = document.getElementById('return-to-radio-btn');
+const shareBtn = document.getElementById('share-btn');
+
+if (shareBtn) {
+  shareBtn.addEventListener('click', async () => {
+    haptics('medium');
+    const channelName = npcTitle ? npcTitle.textContent : 'OcaTech-Live Radio';
+    const shareData = {
+      title: 'OcaTech-Live Radio',
+      text: `Listen to ${channelName} on OcaTech-Live! 🎧`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        console.log('[Share] Shared successfully');
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        updateStatus('Link copied to clipboard!', 'success');
+        setTimeout(() => refreshUI(), 3000);
+      }
+    } catch (err) {
+      console.error('[Share] Error:', err);
+    }
+  });
+}
 
 let allRecordings = []; // For filtering
 
@@ -995,6 +1022,19 @@ chatForm.addEventListener('submit', (e) => {
 /* Visualizer Logic */
 let visualizerContext = null;
 let animationId = null;
+let currentVisualMode = localStorage.getItem('visualizerMode') || 'bars'; // bars, wave, pulse
+
+const visualModeBtn = document.getElementById('visual-mode-btn');
+if (visualModeBtn) {
+  visualModeBtn.addEventListener('click', () => {
+    haptics('light');
+    const modes = ['bars', 'wave', 'pulse'];
+    const nextIndex = (modes.indexOf(currentVisualMode) + 1) % modes.length;
+    currentVisualMode = modes[nextIndex];
+    localStorage.setItem('visualizerMode', currentVisualMode);
+    console.log('[Visualizer] Mode switched to:', currentVisualMode);
+  });
+}
 
 function initVisualizer(stream) {
   if (!stream) return;
@@ -1002,14 +1042,13 @@ function initVisualizer(stream) {
   const canvas = document.getElementById('visualizer');
   const ctx = canvas.getContext('2d');
 
-  // Set canvas size
   canvas.width = 220;
   canvas.height = 220;
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioCtx.createMediaStreamSource(stream);
   const analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 64;
+  analyser.fftSize = 128; // Higher res for wave
 
   source.connect(analyser);
 
@@ -1026,24 +1065,65 @@ function initVisualizer(stream) {
     const centerY = canvas.height / 2;
     const radius = 60;
 
-    ctx.strokeStyle = '#00f2ea';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
+    if (currentVisualMode === 'bars') {
+      // MODE: REACTIVE NEON BARS
+      ctx.lineWidth = 3;
+      for (let i = 0; i < bufferLength; i += 2) {
+        const val = dataArray[i] / 255;
+        const barHeight = val * 35;
+        const angle = (i * 2 * Math.PI) / bufferLength;
+        
+        const x1 = centerX + Math.cos(angle) * radius;
+        const y1 = centerY + Math.sin(angle) * radius;
+        const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+        const y2 = centerY + Math.sin(angle) * (radius + barHeight);
 
-    for (let i = 0; i < bufferLength; i++) {
-      const value = dataArray[i] / 255;
-      const barHeight = value * 40;
-
-      const angle = (i * 2 * Math.PI) / bufferLength;
-      const x1 = centerX + Math.cos(angle) * radius;
-      const y1 = centerY + Math.sin(angle) * radius;
-      const x2 = centerX + Math.cos(angle) * (radius + barHeight);
-      const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, '#ff2d55');
+        grad.addColorStop(1, '#00f2ea');
+        
+        ctx.strokeStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    } else if (currentVisualMode === 'wave') {
+      // MODE: LIQUID WAVE RING
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#00f2ea';
+      ctx.beginPath();
+      for (let i = 0; i <= bufferLength; i++) {
+        const val = (dataArray[i % bufferLength] / 255) * 20;
+        const angle = (i * 2 * Math.PI) / bufferLength;
+        const x = centerX + Math.cos(angle) * (radius + val);
+        const y = centerY + Math.sin(angle) * (radius + val);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      
+      // Subtle glow fill
+      ctx.fillStyle = 'rgba(0, 242, 234, 0.1)';
+      ctx.fill();
+    } else if (currentVisualMode === 'pulse') {
+      // MODE: ENERGETIC PULSE RINGS
+      const val = dataArray[4] / 255; // Lower frequency for kick pulse
+      const pulseSize = val * 40;
+      
+      ctx.strokeStyle = `rgba(255, 45, 85, ${0.8 - val * 0.5})`;
+      ctx.lineWidth = 2 + val * 5;
+      
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius + pulseSize, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius + pulseSize * 0.5, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0, 242, 234, ${0.5})`;
+      ctx.stroke();
     }
-    ctx.stroke();
   }
 
   draw();
