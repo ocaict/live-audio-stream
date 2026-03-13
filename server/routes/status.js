@@ -4,5 +4,6 @@ const statusController = require("../controllers/statusController");
 
 router.get("/", statusController.getStatus);
 router.get("/rtc-config", statusController.getRTCConfig);
+router.get("/config", statusController.getPublicConfig);
 
 module.exports = router;

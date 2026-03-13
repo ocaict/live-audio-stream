@@ -9,7 +9,9 @@ const MessageModel = {
                 username: message.username,
                 content: message.content,
                 is_admin: message.is_admin || false,
-                is_system: message.is_system || false
+                is_system: message.is_system || false,
+                user_id: message.user_id || null,
+                is_verified: message.is_verified || false
             }])
             .select()
             .single();

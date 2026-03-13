@@ -49,6 +49,27 @@ const AuthService = {
     };
   },
 
+  async verifySupabaseToken(token) {
+    try {
+      const { supabase: getSupabase } = require('../config/database');
+      const supabase = getSupabase();
+      
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) return null;
+      
+      return {
+        id: user.id,
+        email: user.email,
+        username: user.user_metadata?.full_name || user.user_metadata?.display_name || user.email.split('@')[0],
+        role: 'listener', // Supabase social logins are listeners by default
+        is_supabase: true
+      };
+    } catch (e) {
+      return null;
+    }
+  },
+
   verifyToken(token) {
     try {
       return jwt.verify(token, CONFIG.JWT_SECRET);

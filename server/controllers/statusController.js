@@ -44,6 +44,13 @@ const statusController = {
         iceServers: CONFIG.ICE_SERVERS
       });
     }
+  },
+
+  getPublicConfig(req, res) {
+    res.json({
+      supabaseUrl: CONFIG.SUPABASE_URL,
+      supabaseKey: CONFIG.SUPABASE_KEY // This should be the Anon/Public Key
+    });
   }
 };
 

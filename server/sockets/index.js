@@ -9,21 +9,24 @@ const autoDJService = require('../services/autoDJService');
 const ScheduleModel = require('../models/schedule');
 
 function setupSocketHandlers(io) {
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const cookies = cookie.parse(socket.handshake.headers.cookie || '');
-      const token = cookies.token;
+      const token = socket.handshake.auth?.token || cookies.token;
 
       if (token) {
-        const user = AuthService.verifyToken(token);
+        // 1. Try internal JWT first (Broadcasters/Admins)
+        let user = AuthService.verifyToken(token);
+        
+        // 2. If failed, try Supabase (Listeners)
+        if (!user) {
+          user = await AuthService.verifySupabaseToken(token);
+        }
+
         if (user) {
           socket.user = user;
-          console.log(`[Socket Auth] Success for user ${user.username} (${socket.id})`);
-        } else {
-          console.warn(`[Socket Auth] Invalid token provided for socket ${socket.id}`);
+          console.log(`[Socket Auth] Success for user ${user.username || user.email} (${socket.id})`);
         }
-      } else {
-        console.log(`[Socket Auth] No token cookie found for socket ${socket.id}`);
       }
       next();
     } catch (err) {
@@ -389,12 +392,16 @@ function setupSocketHandlers(io) {
 
       try {
         const isAdminUser = socket.user && ['admin', 'broadcaster'].includes(socket.user.role);
+        const isVerified = !!socket.user;
+        const userId = socket.user ? socket.user.id : null;
 
         const message = await MessageModel.create({
           channel_id: targetChannelId,
           username,
           content,
-          is_admin: isAdminUser // Only true if user has admin/broadcaster role
+          is_admin: isAdminUser,
+          is_verified: isVerified,
+          user_id: userId
         });
 
         // Broadcast to everyone in the room

@@ -63,9 +63,30 @@
         <i data-lucide="radio" class="logo-icon"></i>
         <span>OcaTech-Live</span>
       </div>
-      <div id="live-indicator" class="indicator offline">
-        <span class="dot"></span>
-        <span class="status-label">Offline</span>
+      <div class="header-right">
+        <div id="live-indicator" class="indicator offline">
+          <span class="dot"></span>
+          <span class="status-label">Offline</span>
+        </div>
+        <div id="user-profile-section" class="user-profile-section">
+          <button id="auth-trigger-btn" class="auth-trigger-btn">
+            <i data-lucide="user"></i>
+            <span>Login</span>
+          </button>
+          <div id="user-info-dropdown" class="user-info-dropdown hidden">
+            <div class="user-details">
+              <img id="user-avatar" src="" alt="Avatar" class="avatar hidden">
+              <div id="user-initials" class="avatar-initials">?</div>
+              <div class="user-meta">
+                <span id="header-username">Guest</span>
+                <span id="user-role-badge" class="role-badge">Listener</span>
+              </div>
+            </div>
+            <button id="logout-btn" class="dropdown-item">
+              <i data-lucide="log-out"></i> Sign Out
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -229,6 +250,48 @@
           <i data-lucide="radio"></i>
           <span>Return to Live Radio</span>
         </button>
+  </div>
+
+  <!-- Authentication Overlay -->
+  <div id="auth-overlay" class="overlay hidden">
+    <div class="overlay-content auth-card glass-card">
+      <div class="sheet-handle"></div>
+      <div class="overlay-header">
+        <div class="overlay-header-top">
+          <h2><i data-lucide="shield-check"></i> Join Community</h2>
+          <button id="close-auth-btn" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <p class="auth-subtitle">Sign in to participate in chat and request songs.</p>
+      </div>
+
+      <div class="auth-methods">
+        <!-- Magic Link Login -->
+        <form id="auth-form" class="auth-form">
+          <div class="input-group">
+            <label for="auth-email">Email Address</label>
+            <input type="email" id="auth-email" placeholder="name@example.com" required autocomplete="email">
+          </div>
+          <button type="submit" id="auth-submit-btn" class="primary-btn">
+            <span>Send Magic Link</span>
+            <i data-lucide="send"></i>
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>OR</span>
+        </div>
+
+        <!-- Social Login -->
+        <button id="google-login-btn" class="social-btn google">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <div id="auth-message" class="auth-message hidden"></div>
+      
+      <div class="overlay-footer">
+        By continuing, you agree to our terms and privacy policy.
       </div>
     </div>
   </div>
@@ -260,6 +323,7 @@
     <i data-lucide="messages-square"></i>
   </button>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     window.SERVER_URL = '';

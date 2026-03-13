@@ -230,6 +230,190 @@ if (shareBtn) {
   });
 }
 
+/** 🔐 AUTHENTICATION LOGIC (PHASE 1) **/
+let supabase = null;
+const authOverlay = document.getElementById('auth-overlay');
+const authTriggerBtn = document.getElementById('auth-trigger-btn');
+const closeAuthBtn = document.getElementById('close-auth-btn');
+const authForm = document.getElementById('auth-form');
+const googleLoginBtn = document.getElementById('google-login-btn');
+const authMessage = document.getElementById('auth-message');
+const userInfoDropdown = document.getElementById('user-info-dropdown');
+const userProfileSection = document.getElementById('user-profile-section');
+const headerUsername = document.getElementById('header-username');
+const userRoleBadge = document.getElementById('user-role-badge');
+const logoutBtn = document.getElementById('logout-btn');
+
+async function initAuth() {
+  try {
+    // 1. Fetch public config from server
+    const res = await fetch('/api/status/config');
+    const config = await res.json();
+    
+    if (config.supabaseUrl && config.supabaseKey && window.supabase) {
+      supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+      console.log('[Auth] Supabase client initialized');
+      
+      // 2. Check for existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      updateAuthUI(session);
+
+      // 3. Listen for auth changes
+      supabase.auth.onAuthStateChange((_event, session) => {
+        console.log('[Auth] State changed:', _event);
+        updateAuthUI(session);
+      });
+    }
+  } catch (e) {
+    console.error('[Auth] Initialization failed:', e);
+  }
+}
+
+function updateAuthUI(session) {
+  if (session && session.user) {
+    const user = session.user;
+    const metadata = user.user_metadata || {};
+    
+    // Update Header
+    authTriggerBtn.classList.add('hidden');
+    userInfoDropdown.classList.add('hidden'); // Ensure closed by default
+    userProfileSection.classList.remove('hidden');
+    
+    const displayName = metadata.full_name || metadata.display_name || user.email.split('@')[0];
+    headerUsername.textContent = displayName;
+    
+    // Update initials
+    const initials = displayName.substring(0, 2).toUpperCase();
+    document.getElementById('user-initials').textContent = initials;
+    
+    // Avatar handling
+    const avatarUrl = metadata.avatar_url || metadata.picture;
+    const avatarImg = document.getElementById('user-avatar');
+    const initialsEl = document.getElementById('user-initials');
+    
+    if (avatarUrl) {
+      avatarImg.src = avatarUrl;
+      avatarImg.classList.remove('hidden');
+      initialsEl.classList.add('hidden');
+    } else {
+      avatarImg.classList.add('hidden');
+      initialsEl.classList.remove('hidden');
+    }
+    
+    // Update chat username if it's currently anonymous
+    if (chatUsernameInput && (chatUsernameInput.value.startsWith('Anonymous-') || !chatUsernameInput.value)) {
+      chatUsernameInput.value = displayName;
+      localStorage.setItem('chatUsername', displayName);
+    }
+    
+    // Update State
+    State.user = user;
+    console.log('[Auth] User logged in:', displayName);
+
+    // Sync with Socket
+    if (socket && session.access_token) {
+      socket.auth = { token: session.access_token };
+      // If already connected, we might need to manual re-auth if logic requires, 
+      // but for now, the next message will include the user context if we use the token in middleware
+      // Or we can just reconnect for a clean slate
+      if (socket.connected) {
+        console.log('[Auth] Refreshing socket identity...');
+        // socket.disconnect().connect(); 
+      }
+    }
+  } else {
+    // Guest State
+    authTriggerBtn.classList.remove('hidden');
+    userInfoDropdown.classList.add('hidden');
+    State.user = null;
+    if (socket) socket.auth = {};
+  }
+}
+
+// UI Listeners
+if (authTriggerBtn) {
+  authTriggerBtn.addEventListener('click', () => {
+    haptics('light');
+    authOverlay.classList.remove('hidden');
+  });
+}
+
+if (closeAuthBtn) {
+  closeAuthBtn.addEventListener('click', () => {
+    authOverlay.classList.add('hidden');
+  });
+}
+
+// User Profile Click (Toggle Dropdown)
+if (userProfileSection) {
+  userProfileSection.addEventListener('click', (e) => {
+    if (e.target.closest('.auth-trigger-btn')) return;
+    userInfoDropdown.classList.toggle('hidden');
+  });
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (userInfoDropdown && !userProfileSection.contains(e.target)) {
+    userInfoDropdown.classList.add('hidden');
+  }
+});
+
+if (authForm) {
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    haptics('medium');
+    const email = document.getElementById('auth-email').value;
+    const submitBtn = document.getElementById('auth-submit-btn');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Sending...</span>';
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      authMessage.textContent = error.message;
+      authMessage.className = 'auth-message error';
+    } else {
+      authMessage.textContent = 'Check your email for the magic link! ✨';
+      authMessage.className = 'auth-message success';
+    }
+    authMessage.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Send Magic Link</span> <i data-lucide="send"></i>';
+    if (window.lucide) lucide.createIcons();
+  });
+}
+
+if (googleLoginBtn) {
+  googleLoginBtn.addEventListener('click', async () => {
+    haptics('heavy');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) console.error('[Auth] Google Error:', error.message);
+  });
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    haptics('light');
+    await supabase.auth.signOut();
+    location.reload(); // Refresh to clear all sensitive state
+  });
+}
+
+// Initialize Auth
+initAuth();
+
 let allRecordings = []; // For filtering
 
 // Load saved username
@@ -893,20 +1077,23 @@ function appendMessage(msg) {
   const isOwn = msg.username === currentUsername;
   const isAdmin = msg.is_admin === true;
   const isSystem = msg.is_system === true;
+  const isVerified = msg.is_verified === true;
 
   const div = document.createElement('div');
-  div.className = `message-item ${isOwn ? 'own' : ''} ${isAdmin ? 'is-admin' : ''} ${isSystem ? 'is-system' : ''}`;
+  div.className = `message-item ${isOwn ? 'own' : ''} ${isAdmin ? 'is-admin' : ''} ${isSystem ? 'is-system' : ''} ${isVerified ? 'is-verified' : ''}`;
   div.dataset.id = msg.id;
 
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   div.innerHTML = `
     <div class="message-meta">
-      ${isAdmin ? '<span class="admin-badge">Broadcaster</span>' : ''}
+      ${isAdmin ? '<span class="admin-badge">Broadcaster</span>' : (isVerified ? '<span class="verified-badge"><i data-lucide="shield-check"></i> Member</span>' : '')}
       <span class="meta-text"></span>
     </div>
     <div class="chat-bubble"></div>
   `;
+
+  if (window.lucide) lucide.createIcons();
 
   // Safely inject untrusted user data using textContent to prevent XSS
   div.querySelector('.meta-text').textContent = `${msg.username} • ${time}`;
@@ -994,11 +1181,15 @@ chatForm.addEventListener('submit', (e) => {
   // Persist username
   localStorage.setItem('chatUsername', username);
 
-  socket.emit('send-message', {
+  const payload = {
     channelId: State.channelId,
     content,
-    username
-  });
+    username,
+    userId: State.user ? State.user.id : null,
+    isVerified: !!State.user
+  };
+
+  socket.emit('send-message', payload);
 
   chatInput.value = '';
 
