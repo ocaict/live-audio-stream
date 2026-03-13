@@ -263,10 +263,13 @@ if (tuneInBtn) {
     haptics('medium');
     console.log('[TuneIn] User initiated playback');
 
-    // 1. Hide the overlay with the fade transition
+    // 1. Stop any archive playback
+    stopArchivePlayback();
+
+    // 2. Hide the overlay with the fade transition
     tuneInOverlay.classList.add('hidden');
 
-    // 2. Trigger audio start logic
+    // 3. Trigger audio start logic
     initMasterAudio();
 
     if (!State.intent) {
@@ -417,9 +420,9 @@ function renderChannelSelector() {
 }
 
 async function startListening() {
-  // If moving to live, pause archive
-  if (archiveAudioPlayer) archiveAudioPlayer.pause();
-  if (libraryPlayerContainer) libraryPlayerContainer.classList.add('hidden');
+  // If moving to live, stop archive
+  stopArchivePlayback();
+  
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
@@ -1547,33 +1550,58 @@ function toggleLibrary(show) {
   }
 }
 
+function stopArchivePlayback() {
+  if (archiveAudioPlayer) {
+    archiveAudioPlayer.pause();
+    archiveAudioPlayer.src = '';
+    archiveAudioPlayer.load();
+  }
+  if (libraryPlayerContainer) {
+    libraryPlayerContainer.classList.add('hidden');
+  }
+}
+
 function playFromArchive(id, title) {
   if (!archiveAudioPlayer) return;
 
-  // Stop live audio context if it's active
+  // 1. Properly stop Live radio intent and cleaning up connections
+  if (State.intent) {
+    console.log('[Archive] Stopping live stream intent to switch to archive');
+    stopListening();
+  }
+
+  // 2. Suspend live context as a safety measure
   if (audioCtx && audioCtx.state === 'running') {
     audioCtx.suspend();
   }
 
-  // Update library player UI
-  lpTitle.textContent = title;
-  libraryPlayerContainer.classList.remove('hidden');
+  // 3. Update library player UI
+  if (lpTitle) lpTitle.textContent = title;
+  if (libraryPlayerContainer) libraryPlayerContainer.classList.remove('hidden');
 
-  // Set source and play
+  // 4. Set source and play
   archiveAudioPlayer.src = `/api/recordings/${id}/stream`;
   archiveAudioPlayer.load();
   archiveAudioPlayer.play().catch(e => console.error('[Archive] Playback error:', e));
 
   console.log(`[Archive] Streaming: ${title}`);
+  
+  // 5. Update Media Session for the archive recording
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: 'OcaTech Archive',
+      album: 'Past Broadcast',
+      artwork: [
+        { src: '/listener/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/listener/icon-512.png', sizes: '512x512', type: 'image/png' }
+      ]
+    });
+  }
 }
 
-// Ensure live audio resumes if listener clicks "Tune In" again
-if (tuneInBtn) {
-  tuneInBtn.addEventListener('click', () => {
-    if (archiveAudioPlayer) archiveAudioPlayer.pause();
-    // (Other tune-in logic already exists in the file)
-  });
-}
+// Consolidate "Tune In" logic at the bottom or maintain the one at top
+// We will remove the duplicate defined around line 1572
 
 if (closeLibraryBtn) {
   closeLibraryBtn.addEventListener('click', () => {
