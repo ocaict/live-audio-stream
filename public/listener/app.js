@@ -429,7 +429,8 @@ if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     haptics('light');
     await authClient.auth.signOut();
-    location.reload(); // Refresh to clear all sensitive state
+    localStorage.removeItem('chatUsername'); // wipe saved username
+    window.location.href = window.location.origin; // Refresh and clear hash
   });
 }
 
