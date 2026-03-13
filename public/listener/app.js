@@ -1609,8 +1609,15 @@ function resetCallState() {
 
 if (requestMicBtn) {
   requestMicBtn.addEventListener('click', () => {
+    // Phase 1 Auth Enforcement: Must be logged in to request mic
+    if (!State.user) {
+      haptics('medium');
+      authOverlay.classList.remove('hidden');
+      return;
+    }
+
     if (callState === 'idle') {
-      const username = State.username || chatUsernameInput?.value.trim() || 'Listener';
+      const username = State.user.user_metadata?.full_name || State.user.user_metadata?.display_name || State.user.email.split('@')[0];
       socket.emit('request-to-speak', { channelId: State.channelId, username });
 
       callState = 'requesting';
