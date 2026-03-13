@@ -639,23 +639,67 @@ function renderChannelSelector() {
 
   // Populate visual cards
   if (channelList) {
-    channelList.innerHTML = State.channels.map(ch => `
-      <div class="channel-card ${String(ch.id) === String(savedId) ? 'active' : ''} ${ch.isLive ? 'live' : ''}" data-id="${ch.id}">
-        <div class="cc-dot"></div>
-        <div class="cc-name">${ch.name}</div>
-      </div>
-    `).join('');
+    const favorites = getFavorites();
+    const filterFavs = channelList.dataset.filterFavs === 'true';
+    let channelsToShow = State.channels;
+    if (filterFavs) channelsToShow = State.channels.filter(ch => favorites.includes(String(ch.id)));
 
-    // Add click events to cards
+    channelList.innerHTML = `
+      <div class="channel-filter-row">
+        <button class="ch-filter-btn ${!filterFavs ? 'active' : ''}" id="filter-all-btn">
+          <i data-lucide="radio"></i> All Stations
+        </button>
+        <button class="ch-filter-btn ${filterFavs ? 'active' : ''}" id="filter-fav-btn">
+          <i data-lucide="heart"></i> Favourites
+          ${favorites.length > 0 ? `<span class="fav-count">${favorites.length}</span>` : ''}
+        </button>
+      </div>
+      ${channelsToShow.length === 0
+        ? `<div class="channel-empty-state"><i data-lucide="heart-off"></i><p>No favourites yet.<br>Tap the ♡ on any station!</p></div>`
+        : channelsToShow.map(ch => `
+          <div class="channel-card ${String(ch.id) === String(savedId) ? 'active' : ''} ${ch.isLive ? 'live' : ''}" data-id="${ch.id}">
+            <div class="cc-dot"></div>
+            <div class="cc-name">${ch.name}</div>
+            <button class="fav-btn ${favorites.includes(String(ch.id)) ? 'favourited' : ''}" data-fav-id="${ch.id}" title="Favourite">
+              <i data-lucide="heart"></i>
+            </button>
+          </div>
+        `).join('')
+      }
+    `;
+
+    if (window.lucide) lucide.createIcons();
+
+    // Filter button events
+    document.getElementById('filter-all-btn')?.addEventListener('click', () => {
+      channelList.dataset.filterFavs = 'false';
+      renderChannelSelector();
+    });
+    document.getElementById('filter-fav-btn')?.addEventListener('click', () => {
+      channelList.dataset.filterFavs = 'true';
+      renderChannelSelector();
+    });
+
+    // Favourite button events
+    channelList.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        haptics('light');
+        const fid = btn.dataset.favId;
+        toggleFavorite(fid);
+        renderChannelSelector();
+      });
+    });
+
+    // Card click events
     channelList.querySelectorAll('.channel-card').forEach(card => {
-      card.addEventListener('click', () => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.fav-btn')) return; // Don't trigger on heart click
         haptics('medium');
         const cid = card.dataset.id;
         State.commit('channelId', cid);
         channelSelect.value = cid;
-        renderChannelSelector(); // Re-render to update active state
-        
-        // If already listening, switch immediately
+        renderChannelSelector();
         if (State.intent) {
           startListening();
         }
@@ -666,6 +710,24 @@ function renderChannelSelector() {
   if (savedId) channelSelect.value = savedId;
   listenBtn.disabled = false;
   refreshUI();
+}
+
+// ── Favourites Helpers ──────────────────────────────────
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('ocaFavorites') || '[]'); }
+  catch { return []; }
+}
+
+function toggleFavorite(channelId) {
+  const favs = getFavorites();
+  const id = String(channelId);
+  const idx = favs.indexOf(id);
+  if (idx === -1) {
+    favs.push(id);
+  } else {
+    favs.splice(idx, 1);
+  }
+  localStorage.setItem('ocaFavorites', JSON.stringify(favs));
 }
 
 async function startListening() {
