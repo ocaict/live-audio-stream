@@ -908,13 +908,18 @@ footer {
     border-top: 1px solid var(--glass-border);
     border-left: none;
     transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 2001;
-    padding: 1rem 1.5rem calc(80px + env(safe-area-inset-bottom)) 1.5rem;
+    z-index: 4000;
+    padding: 1rem 1.5rem calc(60px + env(safe-area-inset-bottom)) 1.5rem;
   }
 
   .chat-panel.open {
     bottom: 0;
     right: 0;
+  }
+
+  .chat-input-area {
+    padding-bottom: 0; /* Handled by panel padding */
+    background: transparent;
   }
 }
 
@@ -1230,7 +1235,7 @@ footer {
   height: 100%;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(15px);
-  z-index: 2000;
+  z-index: 3500;
   display: flex;
   justify-content: center;
   align-items: center;

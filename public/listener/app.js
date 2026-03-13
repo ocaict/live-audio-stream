@@ -1722,3 +1722,74 @@ window.addEventListener('appinstalled', () => {
   console.log('[PWA] OcaTech installed successfully!');
   if (installPrompt) installPrompt.classList.add('hidden');
 });
+
+// --- BOTTOM SHEET DRAG-TO-DISMISS LOGIC ---
+function initBottomSheetDraggable(el, closeFn, handleSelector = '.sheet-handle') {
+  const handle = el.querySelector(handleSelector);
+  if (!handle) return;
+
+  let startY = 0;
+  let currentY = 0;
+  let pulling = false;
+
+  handle.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].pageY;
+    pulling = true;
+    el.style.transition = 'none';
+  }, { passive: true });
+
+  handle.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    currentY = e.touches[0].pageY;
+    const deltaY = currentY - startY;
+    
+    // Only allow pulling down
+    if (deltaY > 0) {
+      el.style.transform = `translateY(${deltaY}px)`;
+    }
+  }, { passive: true });
+
+  handle.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    
+    const deltaY = currentY - startY;
+    el.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+    
+    // If pulled down more than 150px, dismiss it
+    if (deltaY > 150) {
+      el.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        closeFn();
+        el.style.transform = '';
+      }, 300);
+    } else {
+      // Snap back
+      el.style.transform = '';
+    }
+    
+    startY = 0;
+    currentY = 0;
+  });
+}
+
+// Initialize for all mobile bottom sheets
+if (window.innerWidth <= 768) {
+  // Chat Panel
+  initBottomSheetDraggable(chatPanel, () => {
+    chatPanel.classList.remove('open');
+    updateNavActive(navLiveBtn);
+  });
+
+  // Schedule Overlay
+  const scheduleContent = scheduleOverlay.querySelector('.overlay-content');
+  if (scheduleContent) {
+    initBottomSheetDraggable(scheduleContent, () => toggleSchedule(false));
+  }
+
+  // Library Overlay
+  const libraryContent = libraryOverlay.querySelector('.overlay-content');
+  if (libraryContent) {
+    initBottomSheetDraggable(libraryContent, () => toggleLibrary(false));
+  }
+}
