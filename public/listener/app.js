@@ -1707,34 +1707,41 @@ function playFromArchive(id, title) {
 // Consolidate "Tune In" logic at the bottom or maintain the one at top
 // We will remove the duplicate defined around line 1572
 
+// Helper to switch from Archive back to Live Radio
+function handleReturnToRadio() {
+  haptics('success');
+  // 1. Stop archive and hide its UI
+  stopArchivePlayback();
+  // 2. Resume live radio
+  if (!State.intent) {
+    startListening();
+  } else {
+    // If intent was already true, we just need to re-init audio and connect
+    initMasterAudio();
+    connectToBroadcast();
+  }
+  // 3. Dismiss overlay
+  toggleLibrary(false);
+}
+
 if (closeLibraryBtn) {
   closeLibraryBtn.addEventListener('click', () => {
-    toggleLibrary(false);
+    // If archive is playing, use the return logic. Otherwise just close.
+    if (State.isArchivePlaying) {
+      handleReturnToRadio();
+    } else {
+      toggleLibrary(false);
+    }
   });
 }
 
 if (returnToRadioBtn) {
   returnToRadioBtn.addEventListener('click', () => {
-    haptics('success');
-    // 1. Stop archive and hide its UI
-    stopArchivePlayback();
-    // 2. Resume live radio
-    if (!State.intent) {
-      startListening();
-    } else {
-      // If intent was already true, we just need to re-init audio and connect
-      initMasterAudio();
-      connectToBroadcast();
-    }
-    // 3. Dismiss overlay
-    toggleLibrary(false);
+    handleReturnToRadio();
   });
 }
-if (libraryOverlay) {
-  libraryOverlay.addEventListener('click', (e) => {
-    if (e.target === libraryOverlay) toggleLibrary(false);
-  });
-}
+// Backdrop click disabled as per user request to force manual closure
+// if (libraryOverlay) { ... }
 
 if (librarySearch) {
   librarySearch.addEventListener('input', (e) => {
@@ -1940,7 +1947,13 @@ if (window.innerWidth <= 768) {
   // Library Overlay
   const libraryContent = libraryOverlay.querySelector('.overlay-content');
   if (libraryContent) {
-    initBottomSheetDraggable(libraryContent, () => toggleLibrary(false));
+    initBottomSheetDraggable(libraryContent, () => {
+      if (State.isArchivePlaying) {
+        handleReturnToRadio();
+      } else {
+        toggleLibrary(false);
+      }
+    });
   }
 }
 // --- SKELETON LOADERS ---
