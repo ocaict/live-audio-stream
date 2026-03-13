@@ -117,6 +117,7 @@ const liveIndicator = document.getElementById('live-indicator');
 const audioPlayer = document.getElementById('audio-player');
 const pulseRing = document.querySelector('.pulse-ring');
 const channelSelect = document.getElementById('channel-select');
+const channelList = document.getElementById('channel-list');
 const volumeSlider = document.getElementById('volume-slider');
 const volumeIcon = document.getElementById('volume-icon');
 
@@ -136,7 +137,6 @@ let callStream = null;
 const sendBtn = document.getElementById('send-btn');
 
 // Schedule Overlay DOM
-const viewScheduleBtn = document.getElementById('view-schedule-btn');
 const closeScheduleBtn = document.getElementById('close-schedule-btn');
 const scheduleOverlay = document.getElementById('schedule-overlay');
 const scheduleContainer = document.getElementById('schedule-container');
@@ -145,8 +145,9 @@ const scheduleContainer = document.getElementById('schedule-container');
 const nowPlayingCard = document.getElementById('now-playing-card');
 const npcTitle = document.getElementById('npc-title');
 const npcCategory = document.getElementById('npc-category');
-const npcNextTitle = document.getElementById('npc-next-title'); // Added this
+const npcNextTitle = document.getElementById('npc-next-title');
 const npcIcon = document.querySelector('.npc-icon i');
+const closeNpcBtn = document.getElementById('close-npc-btn');
 
 // Chat UI
 const chatMessages = document.getElementById('chat-messages');
@@ -157,16 +158,25 @@ const chatPanel = document.querySelector('.chat-panel');
 const chatToggleBtn = document.getElementById('chat-toggle-btn');
 const closeChatBtn = document.getElementById('close-chat-btn');
 const chatBadge = document.getElementById('chat-badge');
+let unreadCount = 0;
 
-// Library Overlay DOM
-const viewLibraryBtn = document.getElementById('view-library-btn');
+
+const librarySearch = document.getElementById('library-search');
+
+// Bottom Nav elements
+const navLiveBtn = document.getElementById('nav-live-btn');
+const navScheduleBtn = document.getElementById('nav-schedule-btn');
+const navLibraryBtn = document.getElementById('nav-library-btn');
+const navChatBtn = document.getElementById('nav-chat-btn');
+const navItems = document.querySelectorAll('.nav-item');
+
+// Overlay elements (Library)
 const closeLibraryBtn = document.getElementById('close-library-btn');
 const libraryOverlay = document.getElementById('library-overlay');
 const libraryContainer = document.getElementById('library-container');
 const archiveAudioPlayer = document.getElementById('archive-audio-player');
 const libraryPlayerContainer = document.getElementById('library-player-container');
 const lpTitle = document.getElementById('lp-title');
-const librarySearch = document.getElementById('library-search');
 
 let allRecordings = []; // For filtering
 
@@ -183,6 +193,7 @@ if (chatUsernameInput) {
 // Initialize volume
 if (volumeSlider) {
   volumeSlider.value = State.volume;
+  updateVolumeSliderBackground(State.volume);
 }
 if (audioPlayer) {
   audioPlayer.volume = State.volume;
@@ -203,6 +214,7 @@ if (volumeSlider) {
       audioPlayer.muted = false;
     }
     updateVolumeIcon(vol);
+    updateVolumeSliderBackground(vol);
   });
 }
 
@@ -212,10 +224,12 @@ if (volumeIcon) {
       audioPlayer.muted = false;
       volumeSlider.value = State.volume;
       updateVolumeIcon(State.volume);
+      updateVolumeSliderBackground(State.volume);
     } else {
       audioPlayer.muted = true;
       volumeSlider.value = 0;
       updateVolumeIcon(0);
+      updateVolumeSliderBackground(0);
     }
   });
 }
@@ -247,7 +261,13 @@ function updateVolumeIcon(vol) {
   } else {
     volumeIcon.setAttribute('data-lucide', 'volume-2');
   }
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateVolumeSliderBackground(vol) {
+  if (!volumeSlider) return;
+  const percentage = vol * 100;
+  volumeSlider.style.background = `linear-gradient(to right, var(--primary) ${percentage}%, rgba(255, 255, 255, 0.1) ${percentage}%)`;
 }
 
 function refreshUI() {
@@ -318,7 +338,8 @@ async function loadChannels() {
   } catch (e) {
     console.error('Failed to load channels:', e);
     State.channels = [];
-    channelSelect.innerHTML = '<option value="">Failed to load channels</option>';
+    if (channelSelect) channelSelect.innerHTML = '<option value="">Error</option>';
+    if (channelList) channelList.innerHTML = '<div class="channel-loader">Failed to load channels</div>';
   }
 }
 
@@ -329,14 +350,41 @@ function renderChannelSelector() {
   const savedId = channelSelect.value || State.channelId;
 
   if (State.channels.length === 0) {
-    channelSelect.innerHTML = '<option value="">No channels available</option>';
+    if (channelSelect) channelSelect.innerHTML = '<option value="">No channels available</option>';
+    if (channelList) channelList.innerHTML = '<div class="channel-loader">No active stations.</div>';
     listenBtn.disabled = true;
     return;
   }
 
+  // Populate hidden select
   channelSelect.innerHTML = State.channels.map(ch =>
-    `<option value="${ch.id}" ${String(ch.id) === String(savedId) ? 'selected' : ''} ${ch.isLive ? 'data-live="true"' : ''}>${ch.name} ${ch.isLive ? '● LIVE' : ''}</option>`
+    `<option value="${ch.id}" ${String(ch.id) === String(savedId) ? 'selected' : ''}>${ch.name}</option>`
   ).join('');
+
+  // Populate visual cards
+  if (channelList) {
+    channelList.innerHTML = State.channels.map(ch => `
+      <div class="channel-card ${String(ch.id) === String(savedId) ? 'active' : ''} ${ch.isLive ? 'live' : ''}" data-id="${ch.id}">
+        <div class="cc-dot"></div>
+        <div class="cc-name">${ch.name}</div>
+      </div>
+    `).join('');
+
+    // Add click events to cards
+    channelList.querySelectorAll('.channel-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const cid = card.dataset.id;
+        State.commit('channelId', cid);
+        channelSelect.value = cid;
+        renderChannelSelector(); // Re-render to update active state
+        
+        // If already listening, switch immediately
+        if (State.intent) {
+          startListening();
+        }
+      });
+    });
+  }
 
   if (savedId) channelSelect.value = savedId;
   listenBtn.disabled = false;
@@ -745,6 +793,15 @@ socket.on('new-message', (msg) => {
   if (placeholder) placeholder.remove();
 
   appendMessage(msg);
+
+  // Badge logic
+  if (!chatPanel.classList.contains('open')) {
+    unreadCount++;
+    if (chatBadge) {
+      chatBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+      chatBadge.classList.remove('hidden');
+    }
+  }
 });
 
 socket.on('message-deleted', (data) => {
@@ -785,12 +842,11 @@ function appendMessage(msg) {
   div.querySelector('.meta-text').textContent = `${msg.username} • ${time}`;
   div.querySelector('.chat-bubble').textContent = msg.content;
 
+  const isNearBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 100;
   chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Badge logic: if drawer is closed and message is not mine
-  if (chatPanel && !chatPanel.classList.contains('open') && !isOwn && chatBadge) {
-    chatBadge.classList.remove('hidden');
+  
+  if (isNearBottom || isOwn) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 }
 
@@ -798,12 +854,57 @@ if (chatToggleBtn) {
   chatToggleBtn.addEventListener('click', () => {
     chatPanel.classList.add('open');
     if (chatBadge) chatBadge.classList.add('hidden');
+    updateNavActive(navChatBtn);
+  });
+}
+
+// Bottom Nav Logic
+function updateNavActive(activeBtn) {
+  if (!navItems) return;
+  navItems.forEach(item => item.classList.remove('active'));
+  if (activeBtn) activeBtn.classList.add('active');
+}
+
+if (navLiveBtn) {
+  navLiveBtn.addEventListener('click', () => {
+    updateNavActive(navLiveBtn);
+    // Close any open overlays
+    toggleSchedule(false);
+    toggleLibrary(false);
+    if (chatPanel) chatPanel.classList.remove('open');
+  });
+}
+
+if (navScheduleBtn) {
+  navScheduleBtn.addEventListener('click', () => {
+    updateNavActive(navScheduleBtn);
+    toggleSchedule(true);
+  });
+}
+
+if (navLibraryBtn) {
+  navLibraryBtn.addEventListener('click', () => {
+    updateNavActive(navLibraryBtn);
+    toggleLibrary(true);
+  });
+}
+
+if (navChatBtn) {
+  navChatBtn.addEventListener('click', () => {
+    updateNavActive(navChatBtn);
+    chatPanel.classList.add('open');
+    unreadCount = 0;
+    if (chatBadge) {
+      chatBadge.textContent = '';
+      chatBadge.classList.add('hidden');
+    }
   });
 }
 
 if (closeChatBtn) {
   closeChatBtn.addEventListener('click', () => {
     chatPanel.classList.remove('open');
+    updateNavActive(navLiveBtn); // Default back to Live when chat closes
   });
 }
 
@@ -1054,6 +1155,14 @@ socket.on('autodj-track-changed', (meta) => {
 });
 
 let npcTimeout = null;
+
+if (closeNpcBtn) {
+  closeNpcBtn.addEventListener('click', () => {
+    if (nowPlayingCard) nowPlayingCard.classList.add('hidden');
+    if (npcTimeout) clearTimeout(npcTimeout);
+  });
+}
+
 function showNowPlaying(meta) {
   if (!nowPlayingCard) return;
 
@@ -1255,12 +1364,10 @@ function renderSchedule(schedules) {
   }
 
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-  const grouped = {};
-
-  // Group by day
-  schedules.forEach(s => {
-    if (!grouped[s.day_of_week]) grouped[s.day_of_week] = [];
-    grouped[s.day_of_week].push(s);
+  // Sort by day then by time
+  const sortedSchedules = schedules.sort((a,b) => {
+    if(a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+    return a.start_time.localeCompare(b.start_time);
   });
 
   const now = new Date();
@@ -1268,25 +1375,29 @@ function renderSchedule(schedules) {
   const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
   let html = '';
-  // Sort by day 0-6
-  Object.keys(grouped).sort().forEach(dayIdx => {
-    html += `
-      <div class="schedule-day">
-        <h4>${days[dayIdx]}</h4>
-        <div class="day-slots">
-          ${grouped[dayIdx].map(slot => {
-      const isToday = parseInt(dayIdx) === currentDay;
-      // Basic check for "is-active"
-      const isActive = isToday && currentTime >= slot.start_time.substring(0, 5) && currentTime <= slot.end_time.substring(0, 5);
+  let lastDay = -1;
 
-      return `
-              <div class="slot-item ${isActive ? 'is-active' : ''}">
-                <span class="slot-time">${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}</span>
-                <span class="slot-name">Music Selection</span>
-              </div>
-            `;
-    }).join('')}
+  sortedSchedules.forEach(slot => {
+    if (slot.day_of_week !== lastDay) {
+      html += `<div class="schedule-day-label">${days[slot.day_of_week]}</div>`;
+      lastDay = slot.day_of_week;
+    }
+
+    const playlistName = slot.playlists ? slot.playlists.name : 'Music Selection';
+    const isToday = parseInt(slot.day_of_week) === currentDay;
+    const isActive = isToday && currentTime >= slot.start_time.substring(0, 5) && currentTime <= slot.end_time.substring(0, 5);
+
+    html += `
+      <div class="slot-item ${isActive ? 'is-active' : ''}">
+        <div class="slot-time">
+          <span class="st-start">${slot.start_time.substring(0, 5)}</span>
+          <span class="st-end">${slot.end_time.substring(0, 5)}</span>
         </div>
+        <div class="slot-info">
+          <div class="slot-name">${playlistName}</div>
+          <div class="slot-desc">${isActive ? 'Currently live on air' : 'Scheduled broadcast'}</div>
+        </div>
+        ${isActive ? '<div class="slot-live-badge">LIVE</div>' : '<i data-lucide="clock" class="slot-clock"></i>'}
       </div>
     `;
   });
@@ -1300,15 +1411,14 @@ function toggleSchedule(show) {
     scheduleOverlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     fetchSchedule(State.channelId);
+    updateNavActive(navScheduleBtn);
   } else {
     scheduleOverlay.classList.add('hidden');
     document.body.style.overflow = '';
+    updateNavActive(navLiveBtn);
   }
 }
 
-if (viewScheduleBtn) {
-  viewScheduleBtn.addEventListener('click', () => toggleSchedule(true));
-}
 if (closeScheduleBtn) {
   closeScheduleBtn.addEventListener('click', () => toggleSchedule(false));
 }
@@ -1351,14 +1461,16 @@ function renderLibrary(recordings) {
 
     html += `
       <div class="recording-item" onclick="playFromArchive('${rec.id}', '${rec.title.replace(/'/g, "\\'")}')">
-        <div class="ri-play-overlay">
-          <div class="play-icon-circle"><i data-lucide="play"></i></div>
+        <div class="ri-info">
+          <div class="ri-title">${rec.title || 'Untitled Broadcast'}</div>
+          <div class="ri-meta">
+            <span class="ri-date">${dateStr}</span>
+            <span class="ri-dot">•</span>
+            <span>${sizeMB} MB</span>
+          </div>
         </div>
-        <div class="ri-date">${dateStr}</div>
-        <div class="ri-title">${rec.title || 'Untitled Broadcast'}</div>
-        <div class="ri-meta">
-          <span><i data-lucide="hard-drive"></i> ${sizeMB} MB</span>
-          <span><i data-lucide="radio"></i> Master Copy</span>
+        <div class="ri-play-btn">
+          <i data-lucide="play"></i>
         </div>
       </div>
     `;
@@ -1373,9 +1485,11 @@ function toggleLibrary(show) {
     libraryOverlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     fetchLibrary(State.channelId);
+    updateNavActive(navLibraryBtn);
   } else {
     libraryOverlay.classList.add('hidden');
     document.body.style.overflow = '';
+    updateNavActive(navLiveBtn);
   }
 }
 
@@ -1407,14 +1521,9 @@ if (tuneInBtn) {
   });
 }
 
-if (viewLibraryBtn) {
-  viewLibraryBtn.addEventListener('click', () => toggleLibrary(true));
-}
 if (closeLibraryBtn) {
   closeLibraryBtn.addEventListener('click', () => {
     toggleLibrary(false);
-    // Maybe keep playing in background? Or stop? 
-    // Broadcasters usually prefer to keep it playing unless they close the station.
   });
 }
 if (libraryOverlay) {

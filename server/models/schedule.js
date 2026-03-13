@@ -28,7 +28,7 @@ const ScheduleModel = {
     async findByChannelId(channelId) {
         const { data, error } = await getSupabase()
             .from('schedules')
-            .select('*')
+            .select('*, playlists(name)')
             .eq('channel_id', channelId)
             .order('day_of_week', { ascending: true })
             .order('start_time', { ascending: true });

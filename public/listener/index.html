@@ -37,33 +37,21 @@
         <i data-lucide="radio" class="logo-icon"></i>
         <span>OcaTech-Live</span>
       </div>
-      <div class="header-actions">
-        <button id="view-schedule-btn" class="header-btn" title="View Station Schedule">
-          <i data-lucide="calendar"></i>
-          <span>Schedule</span>
-        </button>
-        <button id="view-library-btn" class="header-btn" title="Listen to Past Shows">
-          <i data-lucide="library"></i>
-          <span>Library</span>
-        </button>
-        <div id="live-indicator" class="indicator offline">
-          <span class="dot"></span>
-          <span class="status-label">Offline</span>
-        </div>
+      <div id="live-indicator" class="indicator offline">
+        <span class="dot"></span>
+        <span class="status-label">Offline</span>
       </div>
     </header>
 
     <main>
       <div class="player-card glass-card">
-        <div class="channel-wrapper">
-          <label for="channel-select">Select Station</label>
-          <div class="custom-select">
-            <select id="channel-select">
-              <option value="">Loading channels...</option>
-            </select>
-            <i data-lucide="chevron-down" class="select-icon"></i>
-          </div>
+        <div id="channel-list" class="channel-list">
+          <div class="channel-loader">Loading stations...</div>
         </div>
+        <!-- Hidden select for internal logic compatibility -->
+        <select id="channel-select" class="hidden">
+           <option value="">Loading...</option>
+        </select>
 
         <div class="visualizer-container">
           <canvas id="visualizer"></canvas>
@@ -108,6 +96,7 @@
 
       <!-- Live Chat Panel -->
       <div class="chat-panel glass-card">
+        <div class="sheet-handle"></div>
         <div class="chat-header">
           <h3><i data-lucide="messages-square"></i> Live Chat</h3>
           <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
@@ -151,14 +140,20 @@
         <span id="npc-next-title" class="un-title">...</span>
       </div>
     </div>
+    <button id="close-npc-btn" class="close-npc-btn" title="Dismiss">
+      <i data-lucide="x"></i>
+    </button>
   </div>
 
   <!-- Station Schedule Overlay -->
   <div id="schedule-overlay" class="overlay hidden">
     <div class="overlay-content schedule-card glass-card">
+      <div class="sheet-handle"></div>
       <div class="overlay-header">
-        <h2><i data-lucide="calendar"></i> Station Timetable</h2>
-        <button id="close-schedule-btn" class="close-btn"><i data-lucide="x"></i></button>
+        <div class="overlay-header-top">
+          <h2><i data-lucide="calendar"></i> Station Timetable</h2>
+          <button id="close-schedule-btn" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
       </div>
       <div id="schedule-container" class="schedule-grid">
         <div class="schedule-loader">Loading station schedule...</div>
@@ -170,13 +165,16 @@
   <!-- Recordings Library Overlay -->
   <div id="library-overlay" class="overlay hidden">
     <div class="overlay-content library-card glass-card">
+      <div class="sheet-handle"></div>
       <div class="overlay-header">
-        <h2><i data-lucide="library"></i> Past Broadcasts</h2>
+        <div class="overlay-header-top">
+          <h2><i data-lucide="library"></i> Past Broadcasts</h2>
+          <button id="close-library-btn" class="close-btn"><i data-lucide="x"></i></button>
+        </div>
         <div class="search-box">
           <i data-lucide="search"></i>
           <input type="text" id="library-search" placeholder="Search archive..." autocomplete="off">
         </div>
-        <button id="close-library-btn" class="close-btn"><i data-lucide="x"></i></button>
       </div>
 
       <!-- Mini Player for Library -->
@@ -196,10 +194,32 @@
       <div class="overlay-footer">Enjoy our premium archive of past live sets and shows.</div>
     </div>
   </div>
-  <!-- Floating Chat Toggle -->
-  <button id="chat-toggle-btn" class="chat-toggle-btn" title="Open Chat">
+  <!-- Mobile-First Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button id="nav-live-btn" class="nav-item active" title="Live Stream">
+      <i data-lucide="play-circle"></i>
+      <span>Live</span>
+    </button>
+    <button id="nav-schedule-btn" class="nav-item" title="Schedule">
+      <i data-lucide="calendar"></i>
+      <span>Schedule</span>
+    </button>
+    <button id="nav-library-btn" class="nav-item" title="Library">
+      <i data-lucide="library"></i>
+      <span>Library</span>
+    </button>
+    <button id="nav-chat-btn" class="nav-item" title="Live Chat">
+      <div class="nav-icon-wrapper">
+        <i data-lucide="messages-square"></i>
+        <span id="chat-badge" class="chat-badge hidden"></span>
+      </div>
+      <span>Chat</span>
+    </button>
+  </nav>
+
+  <!-- Old Floating Chat Toggle (Hidden/Removed) -->
+  <button id="chat-toggle-btn" class="chat-toggle-btn hidden">
     <i data-lucide="messages-square"></i>
-    <span id="chat-badge" class="chat-badge hidden"></span>
   </button>
 
   <script src="/socket.io/socket.io.js"></script>
