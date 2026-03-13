@@ -51,6 +51,7 @@ const State = {
   volume: parseFloat(localStorage.getItem('userVolume') || '0.8'),
   isStreaming: false,
   isReconnecting: false,
+  isArchivePlaying: false,
   channels: [],
 
   commit(key, value) {
@@ -200,6 +201,7 @@ const libraryContainer = document.getElementById('library-container');
 const archiveAudioPlayer = document.getElementById('archive-audio-player');
 const libraryPlayerContainer = document.getElementById('library-player-container');
 const lpTitle = document.getElementById('lp-title');
+const returnToRadioBtn = document.getElementById('return-to-radio-btn');
 
 let allRecordings = []; // For filtering
 
@@ -344,6 +346,15 @@ function refreshUI() {
     }
   }
 
+  // Handle Archive Mode Visuals
+  const vizContainer = document.querySelector('.visualizer-container');
+  if (State.isArchivePlaying) {
+    if (vizContainer) vizContainer.classList.add('archive-mode');
+    updateStatus('Streaming from Archive', 'success');
+  } else {
+    if (vizContainer) vizContainer.classList.remove('archive-mode');
+  }
+
   // Show/Hide Call-In controls based on live status
   if (uiLive && State.intent && State.isStreaming) {
     if (callInControls) callInControls.classList.remove('hidden');
@@ -355,6 +366,10 @@ function refreshUI() {
 
 async function loadChannels() {
   try {
+    // Show skeleton if no channels loaded yet
+    if (State.channels.length === 0) {
+      renderSkeletonChannels();
+    }
     const res = await fetch('/api/channels');
     if (!res.ok) {
       throw new Error(`Failed to load channels: ${res.status}`);
@@ -1402,7 +1417,7 @@ async function fetchSchedule(channelId) {
   if (!channelId) return;
 
   try {
-    scheduleContainer.innerHTML = '<div class="schedule-loader">Loading station schedule...</div>';
+    renderSkeletonSchedule();
     const res = await fetch(`/api/schedules/channel/${channelId}`);
     if (!res.ok) throw new Error('Failed to load schedule');
 
@@ -1491,7 +1506,7 @@ async function fetchLibrary(channelId) {
   if (!channelId) return;
 
   try {
-    libraryContainer.innerHTML = '<div id="archive-loader" class="schedule-loader">Opening archive vaults...</div>';
+    renderSkeletonLibrary();
     const res = await fetch(`/api/recordings/channel/${channelId}/public`);
     if (!res.ok) throw new Error('Failed to load archive');
 
@@ -1559,6 +1574,11 @@ function stopArchivePlayback() {
   if (libraryPlayerContainer) {
     libraryPlayerContainer.classList.add('hidden');
   }
+  if (returnToRadioBtn) {
+    returnToRadioBtn.classList.add('hidden');
+  }
+  State.isArchivePlaying = false;
+  refreshUI();
 }
 
 function playFromArchive(id, title) {
@@ -1575,9 +1595,13 @@ function playFromArchive(id, title) {
     audioCtx.suspend();
   }
 
+  State.isArchivePlaying = true;
+  refreshUI();
+
   // 3. Update library player UI
   if (lpTitle) lpTitle.textContent = title;
   if (libraryPlayerContainer) libraryPlayerContainer.classList.remove('hidden');
+  if (returnToRadioBtn) returnToRadioBtn.classList.remove('hidden');
 
   // 4. Set source and play
   archiveAudioPlayer.src = `/api/recordings/${id}/stream`;
@@ -1605,6 +1629,24 @@ function playFromArchive(id, title) {
 
 if (closeLibraryBtn) {
   closeLibraryBtn.addEventListener('click', () => {
+    toggleLibrary(false);
+  });
+}
+
+if (returnToRadioBtn) {
+  returnToRadioBtn.addEventListener('click', () => {
+    haptics('success');
+    // 1. Stop archive and hide its UI
+    stopArchivePlayback();
+    // 2. Resume live radio
+    if (!State.intent) {
+      startListening();
+    } else {
+      // If intent was already true, we just need to re-init audio and connect
+      initMasterAudio();
+      connectToBroadcast();
+    }
+    // 3. Dismiss overlay
     toggleLibrary(false);
   });
 }
@@ -1820,4 +1862,46 @@ if (window.innerWidth <= 768) {
   if (libraryContent) {
     initBottomSheetDraggable(libraryContent, () => toggleLibrary(false));
   }
+}
+// --- SKELETON LOADERS ---
+function renderSkeletonChannels() {
+  if (!channelList) return;
+  channelList.innerHTML = Array(3).fill(0).map(() => `
+    <div class="channel-card skeleton" style="border:none; height:45px; min-width:120px; opacity: 0.5;"></div>
+  `).join('');
+}
+
+function renderSkeletonSchedule() {
+  if (!scheduleContainer) return;
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    html += `
+      <div class="slot-item" style="border:none; background:rgba(255,255,255,0.02); pointer-events:none; margin-bottom:8px;">
+        <div class="skeleton" style="width: 50px; height: 35px; border-radius: 8px;"></div>
+        <div class="slot-info" style="flex:1; margin: 0 15px;">
+          <div class="skeleton skeleton-text medium"></div>
+          <div class="skeleton skeleton-text short"></div>
+        </div>
+        <div class="skeleton skeleton-circle" style="opacity:0.3;"></div>
+      </div>
+    `;
+  }
+  scheduleContainer.innerHTML = html;
+}
+
+function renderSkeletonLibrary() {
+  if (!libraryContainer) return;
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    html += `
+      <div class="recording-item" style="border:none; background:rgba(255,255,255,0.02); pointer-events:none; margin-bottom:8px;">
+        <div class="ri-info" style="flex:1;">
+          <div class="skeleton skeleton-text medium"></div>
+          <div class="skeleton skeleton-text short"></div>
+        </div>
+        <div class="skeleton skeleton-circle" style="opacity:0.3;"></div>
+      </div>
+    `;
+  }
+  libraryContainer.innerHTML = html;
 }

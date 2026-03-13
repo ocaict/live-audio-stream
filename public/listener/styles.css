@@ -85,6 +85,44 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.05) 25%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+.skeleton-text {
+  height: 12px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.skeleton-text.short { width: 40%; }
+.skeleton-text.medium { width: 70%; }
+
+.skeleton-card {
+  height: 100px;
+  width: 100%;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
 header {
   height: 80px;
   display: flex;
@@ -247,6 +285,12 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.5s ease;
+}
+
+.visualizer-container.archive-mode {
+  filter: grayscale(1) opacity(0.4);
+  transform: scale(0.9);
 }
 
 #visualizer {
@@ -1472,6 +1516,44 @@ footer {
   color: var(--text-dim);
   text-align: center;
   border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.return-radio-btn {
+  width: 100%;
+  max-width: 280px;
+  background: linear-gradient(135deg, var(--primary), #d01d44);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 24px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px var(--primary-glow);
+  animation: slideUpFade 0.4s ease-out;
+}
+
+.return-radio-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--primary-glow);
+}
+
+.return-radio-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+.return-radio-btn.hidden {
+  display: none !important;
 }
 
 /* PWA Install Prompt */
