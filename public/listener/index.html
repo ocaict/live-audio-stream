@@ -166,6 +166,18 @@
         <div id="chat-messages" class="chat-messages">
           <div class="chat-placeholder">Welcome! Join the conversation below.</div>
         </div>
+        <!-- Chat identity bar (shown when logged in) -->
+        <div id="chat-identity-bar" class="chat-identity-bar hidden">
+          <div class="chat-id-left">
+            <div id="chat-id-avatar" class="chat-id-avatar"></div>
+            <div class="chat-id-info">
+              <span class="chat-id-label">Chatting as</span>
+              <span id="chat-id-name" class="chat-id-name">—</span>
+            </div>
+          </div>
+          <span class="chat-verified-tag"><i data-lucide="shield-check"></i> Verified</span>
+        </div>
+
         <form id="chat-form" class="chat-input-area">
           <input type="text" id="chat-username" placeholder="Your name" maxlength="15" autocomplete="off">
           <div class="input-row">

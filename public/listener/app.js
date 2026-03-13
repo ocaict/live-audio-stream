@@ -312,12 +312,32 @@ function updateAuthUI(session) {
       if (headerInitialsEl) headerInitialsEl.classList.remove('hidden');
     }
     
-    // Update chat username if it's currently anonymous
-    if (chatUsernameInput && (chatUsernameInput.value.startsWith('Anonymous-') || !chatUsernameInput.value)) {
+    // Update chat username - lock field and show identity bar for verified users
+    const chatIdentityBar = document.getElementById('chat-identity-bar');
+    const chatIdName = document.getElementById('chat-id-name');
+    const chatIdAvatar = document.getElementById('chat-id-avatar');
+
+    if (chatIdentityBar) chatIdentityBar.classList.remove('hidden');
+    if (chatIdName) chatIdName.textContent = displayName;
+
+    // Avatar or initials in identity bar
+    if (chatIdAvatar) {
+      const avatarUrl2 = metadata.avatar_url || metadata.picture;
+      if (avatarUrl2) {
+        chatIdAvatar.innerHTML = `<img src="${avatarUrl2}" alt="" class="chat-id-img">`;
+      } else {
+        chatIdAvatar.textContent = initials;
+      }
+    }
+
+    // Lock the username input - lock it to their real name
+    if (chatUsernameInput) {
       chatUsernameInput.value = displayName;
+      chatUsernameInput.setAttribute('readonly', 'true');
+      chatUsernameInput.classList.add('hidden'); // hide it, identity bar replaces it
       localStorage.setItem('chatUsername', displayName);
     }
-    
+
     // Update State
     State.user = user;
     console.log('[Auth] User logged in:', displayName);
@@ -325,12 +345,8 @@ function updateAuthUI(session) {
     // Sync with Socket
     if (socket && session.access_token) {
       socket.auth = { token: session.access_token };
-      // If already connected, we might need to manual re-auth if logic requires, 
-      // but for now, the next message will include the user context if we use the token in middleware
-      // Or we can just reconnect for a clean slate
       if (socket.connected) {
         console.log('[Auth] Refreshing socket identity...');
-        // socket.disconnect().connect(); 
       }
     }
   } else {
@@ -340,6 +356,14 @@ function updateAuthUI(session) {
     userInfoDropdown.classList.add('hidden');
     State.user = null;
     if (socket) socket.auth = {};
+
+    // Restore chat username field for guests
+    const chatIdentityBar = document.getElementById('chat-identity-bar');
+    if (chatIdentityBar) chatIdentityBar.classList.add('hidden');
+    if (chatUsernameInput) {
+      chatUsernameInput.removeAttribute('readonly');
+      chatUsernameInput.classList.remove('hidden');
+    }
   }
 }
 
@@ -1259,7 +1283,10 @@ chatForm.addEventListener('submit', (e) => {
   haptics('medium');
 
   const content = chatInput.value.trim();
-  const username = chatUsernameInput.value.trim() || 'Anonymous';
+  // Use verified name for logged-in users, otherwise fall back to typed name
+  const username = State.user
+    ? (State.user.user_metadata?.full_name || State.user.user_metadata?.display_name || State.user.email.split('@')[0])
+    : (chatUsernameInput.value.trim() || 'Anonymous');
 
   if (!content || !State.channelId) return;
 
