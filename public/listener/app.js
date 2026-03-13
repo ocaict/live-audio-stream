@@ -1,4 +1,13 @@
 const socket = io(window.SERVER_URL || '');
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+      .catch(err => console.error('[PWA] Registration failed:', err));
+  });
+}
 let peerConnection = null;
 let reconnectAttempts = 0;
 let maxReconnectAttempts = 50;
@@ -1171,7 +1180,33 @@ socket.on('autodj-track-changed', (meta) => {
     nowPlayingEl.style.display = 'block';
   }
   updateStatus(`📻 Auto-DJ: ${meta.title}`, 'live');
+  updateMediaSession(meta);
 });
+
+function updateMediaSession(meta) {
+  if (!('mediaSession' in navigator)) return;
+
+  const currentChannel = State.channels.find(c => String(c.id) === String(State.channelId));
+  const stationName = currentChannel ? currentChannel.name : 'OcaTech-Live';
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: meta.title || 'Live Stream',
+    artist: stationName,
+    album: meta.category ? meta.category.toUpperCase() : 'Radio',
+    artwork: [
+      { src: '/listener/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/listener/icon-512.png', sizes: '512x512', type: 'image/png' }
+    ]
+  });
+
+  // Action handlers for lock screen controls
+  navigator.mediaSession.setActionHandler('play', () => {
+    if (!State.intent) startListening();
+  });
+  navigator.mediaSession.setActionHandler('pause', () => {
+    if (State.intent) stopListening();
+  });
+}
 
 let npcTimeout = null;
 
@@ -1641,3 +1676,49 @@ function resetPTR() {
   ptrIndicator.style.top = `calc(env(safe-area-inset-top) - 40px)`;
   ptrIndicator.style.transform = `translateX(-50%) rotate(0deg)`;
 }
+
+// --- PWA INSTALLATION LOGIC ---
+let deferredPrompt;
+const installPrompt = document.getElementById('pwa-install-prompt');
+const installBtn = document.getElementById('pwa-install-btn');
+const closeInstallBtn = document.getElementById('pwa-close-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent Chrome from showing the default mini-infobar
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  deferredPrompt = e;
+  
+  // Only show the prompt if the user hasn't dismissed it in this session
+  if (!sessionStorage.getItem('pwa_dismissed')) {
+    setTimeout(() => {
+      if (installPrompt) installPrompt.classList.remove('hidden');
+    }, 5000); // Wait 5s before showing
+  }
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    haptics('medium');
+    installPrompt.classList.add('hidden');
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`[PWA] Install choice: ${outcome}`);
+    deferredPrompt = null;
+  });
+}
+
+if (closeInstallBtn) {
+  closeInstallBtn.addEventListener('click', () => {
+    haptics('light');
+    installPrompt.classList.add('hidden');
+    sessionStorage.setItem('pwa_dismissed', 'true');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] OcaTech installed successfully!');
+  if (installPrompt) installPrompt.classList.add('hidden');
+});

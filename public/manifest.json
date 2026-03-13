@@ -1,0 +1,25 @@
+{
+  "name": "OcaTech-Live",
+  "short_name": "OcaTech",
+  "description": "Premium High-Fidelity Radio & Live Audio Streaming",
+  "start_url": "/listener/",
+  "display": "standalone",
+  "background_color": "#0a0a12",
+  "theme_color": "#ff2d55",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/listener/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/listener/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "entertainment", "radio"]
+}

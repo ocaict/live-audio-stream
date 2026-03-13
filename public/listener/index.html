@@ -8,6 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  
+  <!-- PWA & Mobile Meta -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0a12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OcaTech">
+  <link rel="apple-touch-icon" href="/listener/icon-192.png">
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="/listener/styles.css">
 </head>
@@ -28,6 +36,21 @@
         <span>TUNE IN NOW</span>
       </button>
       <div class="tune-in-footer">High Fidelity • Low Latency • Global Access</div>
+    </div>
+  </div>
+
+  <!-- PWA Install Prompt -->
+  <div id="pwa-install-prompt" class="install-prompt hidden">
+    <div class="install-icon">
+      <i data-lucide="download"></i>
+    </div>
+    <div class="install-content">
+      <h3>Install OcaTech</h3>
+      <p>Add to your home screen for a native radio experience.</p>
+    </div>
+    <div class="install-actions">
+      <button id="pwa-install-btn" class="install-btn-small primary">Install</button>
+      <button id="pwa-close-btn" class="install-btn-small secondary">Later</button>
     </div>
   </div>
 
