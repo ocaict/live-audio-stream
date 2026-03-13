@@ -231,7 +231,7 @@ if (shareBtn) {
 }
 
 /** 🔐 AUTHENTICATION LOGIC (PHASE 1) **/
-let supabase = null;
+let authClient = null;
 const authOverlay = document.getElementById('auth-overlay');
 const authTriggerBtn = document.getElementById('auth-trigger-btn');
 const closeAuthBtn = document.getElementById('close-auth-btn');
@@ -251,15 +251,15 @@ async function initAuth() {
     const config = await res.json();
     
     if (config.supabaseUrl && config.supabaseKey && window.supabase) {
-      supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+      authClient = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
       console.log('[Auth] Supabase client initialized');
       
       // 2. Check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authClient.auth.getSession();
       updateAuthUI(session);
 
       // 3. Listen for auth changes
-      supabase.auth.onAuthStateChange((_event, session) => {
+      authClient.auth.onAuthStateChange((_event, session) => {
         console.log('[Auth] State changed:', _event);
         updateAuthUI(session);
       });
@@ -369,7 +369,7 @@ if (authForm) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>Sending...</span>';
     
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await authClient.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: window.location.origin
@@ -393,7 +393,7 @@ if (authForm) {
 if (googleLoginBtn) {
   googleLoginBtn.addEventListener('click', async () => {
     haptics('heavy');
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await authClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin
@@ -406,7 +406,7 @@ if (googleLoginBtn) {
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     haptics('light');
-    await supabase.auth.signOut();
+    await authClient.auth.signOut();
     location.reload(); // Refresh to clear all sensitive state
   });
 }

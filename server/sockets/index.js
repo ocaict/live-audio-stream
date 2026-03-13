@@ -17,7 +17,7 @@ function setupSocketHandlers(io) {
       if (token) {
         // 1. Try internal JWT first (Broadcasters/Admins)
         let user = AuthService.verifyToken(token);
-        
+
         // 2. If failed, try Supabase (Listeners)
         if (!user) {
           user = await AuthService.verifySupabaseToken(token);
@@ -165,7 +165,7 @@ function setupSocketHandlers(io) {
       if (currentChannelId) {
         webrtcService.removeListener(socket.id, currentChannelId);
         socket.leave(currentChannelId);
-        
+
         // Notify broadcaster
         webrtcService.sendToBroadcaster(currentChannelId, 'call-request-cancelled', { socketId: socket.id });
 

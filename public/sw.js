@@ -35,6 +35,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Filter out non-http/https requests (e.g., chrome-extension://)
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+
   // Skip audio streams and API calls (always fresh)
   if (url.pathname.includes('/api/') || url.pathname.includes('/stream') || url.pathname.includes('socket.io')) {
     return;
