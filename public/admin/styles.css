@@ -2255,3 +2255,205 @@ body.broadcasting-live .clock-indicator {
 .flex-1 {
   flex: 1;
 }
+
+/* =============================================
+   RESPONSIVE DESIGN SYSTEM
+   ============================================= */
+
+@media (max-width: 1024px) {
+  .grid-layout {
+    grid-template-columns: 300px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .tabs-nav-bar {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-layout {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar {
+    order: 1; /* Sidebar at top so Channel Selector is visible */
+  }
+
+  .main-content {
+    order: 2;
+  }
+
+  .main-header {
+    height: auto;
+    padding: 1rem 0;
+  }
+
+  .rank-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+  }
+
+  .flex-row {
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: center;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 0.75rem;
+  }
+
+  .tabs-nav-bar {
+    position: sticky;
+    top: 5px;
+    z-index: 50;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(10px);
+    margin: 1rem -1rem;
+    padding: 0.5rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .section-card {
+    padding: 1.25rem;
+  }
+
+  .studio-clock-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .clock-status {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1rem;
+  }
+
+  .clock-time {
+    font-size: 2.5rem;
+  }
+
+  .control-actions {
+    flex-direction: column;
+  }
+
+  .btn.large-btn {
+    width: 100%;
+  }
+
+  .meta-badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .indicator {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+
+  .sidebar {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .channel-selector-area {
+    margin-bottom: 0.75rem;
+  }
+
+  .audio-settings {
+    margin-top: 1rem;
+    padding: 0.75rem;
+  }
+
+  .chat-toggle-floating {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 60px;
+    height: 60px;
+  }
+}
+
+@media (max-width: 600px) {
+  .tabs-nav-bar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    margin: 0;
+    background: var(--bg-dark);
+    border-top: 1px solid var(--glass-border);
+    justify-content: space-around;
+    padding: 8px 0;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+    z-index: 1000;
+  }
+
+  .tab-btn {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    flex: 1;
+  }
+
+  .tab-btn i {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tab-btn span {
+    font-size: 0.7rem;
+  }
+
+  .tab-btn.active {
+    background: transparent;
+    color: var(--primary);
+    box-shadow: none;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  .main-content {
+    padding-bottom: 80px; /* Space for bottom nav */
+  }
+
+  .sidebar {
+    padding-bottom: 30px;
+  }
+
+  /* Move FAB higher to avoid overlapping bottom nav */
+  .chat-toggle-floating {
+    bottom: 5.5rem;
+    right: 1.25rem;
+    background: var(--primary-glow);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--primary);
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+}

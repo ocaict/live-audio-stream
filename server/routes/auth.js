@@ -8,7 +8,8 @@ const { loginValidation } = require('../middleware/validation');
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { error: 'Too many login attempts, please try again later' }
+  message: { error: 'Too many login attempts, please try again later' },
+  skip: (req, res) => process.env.NODE_ENV !== 'production'
 });
 
 router.post('/register', loginValidation, authController.register);
